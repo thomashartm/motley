@@ -23,6 +23,11 @@ func TestShiftEnterSurvivesTmux(t *testing.T) {
 		}
 	}()
 	want := ""
+	modern := f.tmux("display-message", "-p", "#{>=:#{version},3.5}") == "1"
+	plainShiftEnter := ""
+	if modern {
+		plainShiftEnter = "\r"
+	}
 	send := func(input, output string) {
 		t.Helper()
 		want += output
@@ -32,9 +37,10 @@ func TestShiftEnterSurvivesTmux(t *testing.T) {
 			return err == nil && string(data) == want
 		})
 	}
-	// Reproduce the missing modifier with the old/default configuration.
+	// Older tmux drops unbound Shift+Enter; 3.5+ falls back to plain Enter.
+	// A following marker proves the input was processed even if no key arrives.
 	f.tmux("set-option", "-s", "extended-keys", "off")
-	send("\x1b[13;2u", "\r")
+	send("\x1b[13;2ubaseline", plainShiftEnter+"baseline")
 	f.motley("init")
 	config := filepath.Join(f.home, "config/motley/motley.tmux.conf")
 	f.tmux("source-file", config)
@@ -42,7 +48,7 @@ func TestShiftEnterSurvivesTmux(t *testing.T) {
 	if f.tmux("show-options", "-sv", "extended-keys") != "on" {
 		t.Fatal("extended-key configuration was not applied")
 	}
-	if f.tmux("display-message", "-p", "#{>=:#{version},3.5}") == "1" && f.tmux("show-options", "-sv", "extended-keys-format") != "csi-u" {
+	if modern && f.tmux("show-options", "-sv", "extended-keys-format") != "csi-u" {
 		t.Fatal("modern tmux did not select CSI-u")
 	}
 	// The byte receiver stands in for a managed agent that missed negotiation.
@@ -65,7 +71,7 @@ func TestShiftEnterSurvivesTmux(t *testing.T) {
 	send("\x1b[27;2;13~\r", "\x1b[13;2u\r")
 	// A shell left behind after the agent ends must keep normal key handling.
 	f.tmux("set-option", "-t", "=fixture:", "@motley_status", "ended")
-	send("\x1b[13;2u", "\r")
+	send("\x1b[13;2uended", plainShiftEnter+"ended")
 	f.tmux("set-option", "-ut", "=fixture:", "@motley_member")
-	send("\x1b[13;2u", "\r")
+	send("\x1b[13;2ushell", plainShiftEnter+"shell")
 }

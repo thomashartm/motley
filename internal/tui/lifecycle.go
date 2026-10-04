@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/thomashartm/motley/internal/member"
 	"github.com/thomashartm/motley/internal/worktree"
@@ -107,15 +108,17 @@ func (m Model) updateRetire(key string) (tea.Model, tea.Cmd) {
 }
 func (m Model) retireView(height int) string {
 	d := m.retiring
-	lines := []string{"Retire " + clean(d.id) + "?"}
+	width := m.detailWidth()
+	bodyWidth := max(1, width-4)
+	var lines []string
 	if !d.loaded {
 		lines = append(lines, "Checking worktree and commits…")
 	} else if d.err != nil {
 		lines = append(lines, "Cannot retire:", clean(d.err.Error()))
 	} else if d.check.Manifest.CodexSession != "" {
-		lines = append(lines, "Closes its Motley terminal and archives its Motley entry.", "Codex keeps its conversation and running work on the shared server.", "Keeps the checkout, files and all branches.", clean(d.check.Manifest.Worktree))
+		lines = append(lines, "Closes its Motley terminal and archives its Motley entry.", "", "Codex keeps its conversation and running work on the shared server.", "", "Keeps the checkout, files and all branches.")
 	} else if d.check.Manifest.Imported() {
-		lines = append(lines, "Stops all tracked conversations and archives its Motley entry.", "Keeps the checkout, files and all branches.", clean(d.check.Manifest.Worktree))
+		lines = append(lines, "Stops all tracked conversations and archives its Motley entry.", "", "Keeps the checkout, files and all branches.")
 	} else {
 		dirty := "no"
 		if d.check.Dirty {
@@ -134,13 +137,45 @@ func (m Model) retireView(height int) string {
 		if branch == "" {
 			action = "none (detached)"
 		}
-		lines = append(lines, "Local branch: "+action, "", "Removes the tmux session and worktree:", clean(d.check.Manifest.Worktree), "Archives its manifest and history.", "Remote branches are kept.")
+		lines = append(lines, "Local branch: "+action, "", "Removes the tmux session and worktree. Archives its manifest and history.", "Remote branches are kept.")
 	}
-	wrapped := strings.Split(ansi.Hardwrap(strings.Join(lines, "\n"), m.detailWidth(), true), "\n")
+	if d.loaded && d.err == nil && d.check.Manifest.Worktree != "" {
+		path := ansi.Wrap(clean(d.check.Manifest.Worktree), bodyWidth, "/-")
+		lines = append(lines, "", lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8")).Render("Dir"), lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(path))
+	}
+	body := strings.Split(ansi.Wrap(strings.Join(lines, "\n"), bodyWidth, ""), "\n")
 	labels := m.retireChoices()
-	wrapped = wrapped[:min(len(wrapped), max(1, height-len(labels)))]
+	// Keep every control visible. At small heights, remove decorative gaps
+	// before shortening the explanation and mark any omitted content.
+	space := max(0, height-len(labels)-1)
+	separator := space > 1
+	if separator {
+		space--
+	}
+	for i := len(body) - 1; len(body) > space && i >= 0; i-- {
+		if strings.TrimSpace(body[i]) == "" {
+			body = append(body[:i], body[i+1:]...)
+		}
+	}
+	if len(body) > space {
+		body = body[:space]
+		if space > 0 {
+			body[space-1] = ansi.Truncate(body[space-1]+" …", bodyWidth, "…")
+		}
+	}
+	wrapped := []string{lipgloss.NewStyle().Bold(true).Render(fit("Retire "+clean(d.id)+"?", width))}
+	for _, line := range body {
+		wrapped = append(wrapped, "  "+line)
+	}
+	if separator {
+		wrapped = append(wrapped, panelDivider(width))
+	}
 	for i, label := range labels {
-		wrapped = append(wrapped, fit(control(label, d.focus == i), m.detailWidth()))
+		line := fit("  "+control(label, d.focus == i), width)
+		if d.focus == i {
+			line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Render(line)
+		}
+		wrapped = append(wrapped, line)
 	}
 	return strings.Join(wrapped[:min(len(wrapped), height)], "\n")
 }

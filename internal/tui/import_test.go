@@ -117,7 +117,7 @@ func TestImportedCodexActionsPreserveSharedWork(t *testing.T) {
 		t.Fatal("terminate shortcut offered to kill shared work")
 	}
 	m.retiring = &retireDialog{id: r.ID, loaded: true, check: member.RetireCheck{Manifest: r.Manifest}}
-	if len(m.retireChoices()) != 2 || !strings.Contains(m.retireView(m.contentHeight()), "running work") {
+	if len(m.retireChoices()) != 2 || !strings.Contains(strings.Join(strings.Fields(m.retireView(m.contentHeight())), " "), "running work") {
 		t.Fatal("Codex retirement explanation missing")
 	}
 	m.retiring = nil

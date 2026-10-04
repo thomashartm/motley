@@ -80,7 +80,7 @@ For tmux 3.5 or newer, add these lines to `~/.config/motley/motley.tmux.conf`
 set -as terminal-features ",xterm*:extkeys"
 set -s extended-keys on
 set -s extended-keys-format csi-u
-bind -n S-Enter if -F '#{||:#{&&:#{@motley_member},#{!=:#{@motley_status},ended}},#{m/r:^(codex|claude|opencode)$,#{pane_current_command}}}' 'send-keys -l "\033[13;2u"' 'send-keys S-Enter'
+bind -n S-Enter if -F '#{||:#{&&:#{@motley_member},#{!=:#{@motley_status},ended}},#{m/r:^(codex|claude|opencode)$,#{pane_current_command}}}' 'send-keys -l "\033[13;2u"' 'send-keys'
 ```
 
 Reload with `tmux source-file ~/.config/motley/motley.tmux.conf`, then detach and

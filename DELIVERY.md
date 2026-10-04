@@ -29,6 +29,27 @@ Local checks, hosted CI and tags are reported separately. A local pass does not
 establish a hosted CI result. Release numbering follows work-item numbering:
 W0 is `v0.0.0`, W1 is `v0.1.0`, and so on.
 
+## CI keyboard compatibility and retirement layout — implemented
+
+- Rule check: Git/GitHub operations use local `git`/`gh`; delivery evidence stays
+  here. Changes cover the reported CI failure and retirement confirmation only.
+- The Shift+Enter test assumed tmux 3.5+ fallback behavior. Ubuntu CI uses 3.4,
+  which drops the unbound key. Version-aware baseline checks now use trailing
+  markers to verify processing even when the key produces no output.
+- A real tmux 3.4 run exposed a second issue: `send-keys S-Enter` could insert
+  literal text in a shell. The fallback now forwards the original bound key with
+  argument-free `send-keys`. Agent assertions still require the exact CSI-u bytes.
+- CI keeps all test matrix jobs running after a failure and prints the tmux
+  version. Push and pull-request triggers retain their existing coverage.
+- Retirement confirmations gain inset, word-wrapped paragraphs, a separate
+  muted checkout path under `Dir`, and a divider above highlighted controls.
+  Small terminals retain the controls and mark truncated explanations.
+- Validation: the real tmux 3.4 keyboard regression passed; `make test` passed
+  with local tmux 3.6a, along with `go vet ./...`, CI-pinned golangci-lint (zero
+  issues), and all four cross-builds. Layout checks cover 60×10, 100×25 and
+  200×35 terminals, long paths, visible controls and mouse hit targets.
+  Hosted CI results are tracked separately on the pull request.
+
 ## W1 — First member: complete
 
 Delivered new-branch worktree creation from main/master, immediate upstream push,
