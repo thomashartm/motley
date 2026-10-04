@@ -195,7 +195,7 @@ GitHub-backed templates can use `{{.Issue.Title}}`, `{{.Issue.Body}}` and
 | Scroll details | Mouse wheel or **Page Up / Page Down** |
 | Send a reply | **i**; approve permissions in the agent itself |
 | Send a member to an attached work tab | **t** |
-| Choose the monitor's work tab | **p** |
+| Choose where Open agent opens agents | **p** |
 | Leave a dialog | **Esc** |
 | Close the overview or detach the monitor | **q** |
 
@@ -213,6 +213,20 @@ change a colour/crew selector. Choose **Save** or **Cancel**; **Ctrl-s** also sa
 
 Attaching shares the existing session. **t** selects an attached tab; it does not
 create one. In Ghostty on macOS, **Cmd-T** opens a new tab with the default bindings.
+
+The monitor header shows where **Open agent** goes, and the key that changes it:
+
+| Header | Meaning |
+| --- | --- |
+| `opens in: this tab (p)` | No work tab is attached; the monitor tab switches to the agent and the monitor keeps running. |
+| `opens in: <tab> (p)` | The most recently active work tab. |
+| `opens in: <tab>, pinned (p)` | The work tab you pinned with **p**. |
+| `opens in: pinned tab gone (p)` | The pinned tab detached; press **p** to choose another or Automatic. |
+| `opens in: no tab (p)` | Several monitor tabs and no work tab; detach one or attach a work tab. |
+
+To open agents in a separate tab, attach a work tab as above. **p** then lists it;
+Automatic follows the most recently active work tab. `group: attention (g)` shows
+the list grouping; **g** cycles attention, crew and repository.
 
 ### tmux shortcuts
 

@@ -489,7 +489,7 @@ func WorkClient(clients []tmux.Client, pinned string) (tmux.Client, error) {
 				return c, nil
 			}
 		}
-		return tmux.Client{}, fmt.Errorf("pinned work tab is unavailable; press T to choose a work tab")
+		return tmux.Client{}, fmt.Errorf("pinned work tab is unavailable; press p to choose another tab")
 	}
 	if len(work) == 0 {
 		return tmux.Client{}, fmt.Errorf("open another tab and run motley attach <id> to use it as the work tab")
@@ -509,7 +509,7 @@ func openClient(clients []tmux.Client, pinned string) (tmux.Client, error) {
 			continue
 		}
 		if monitor.Name != "" {
-			return tmux.Client{}, fmt.Errorf("multiple monitor tabs are open; choose a work tab with t")
+			return tmux.Client{}, fmt.Errorf("multiple monitor tabs are open; detach one with q, or run mtly attach <member-id> in another tab")
 		}
 		monitor = client
 	}
@@ -517,6 +517,23 @@ func openClient(clients []tmux.Client, pinned string) (tmux.Client, error) {
 		return tmux.Client{}, fmt.Errorf("monitor tab is no longer attached")
 	}
 	return monitor, nil
+}
+
+// openTarget names openClient's destination, so the header never promises a
+// tab that Open agent would refuse.
+func openTarget(clients []tmux.Client, pinned string) string {
+	target, err := openClient(clients, pinned)
+	switch {
+	case err != nil && pinned != "":
+		return "pinned tab gone"
+	case err != nil:
+		return "no tab"
+	case target.Session == tmux.MonitorSession:
+		return "this tab"
+	case pinned != "":
+		return clean(target.Name) + ", pinned"
+	}
+	return clean(target.Name)
 }
 
 func (m Model) jump() (tea.Model, tea.Cmd) {
@@ -643,14 +660,7 @@ func (m Model) View() string {
 		if m.alert {
 			header += "  ! NEW ATTENTION"
 		}
-		if target, err := WorkClient(m.clients, m.pinned); err == nil {
-			header += "  work: " + clean(target.Name)
-			if m.pinned != "" {
-				header += " (pinned)"
-			}
-		} else {
-			header += "  Open agent: this tab"
-		}
+		header += "  opens in: " + openTarget(m.clients, m.pinned) + " (p)"
 	}
 	height, width := m.contentHeight(), m.listWidth()
 	list := m.listView(m.listContentHeight(), width)
@@ -719,29 +729,38 @@ func (m Model) View() string {
 	if m.searching {
 		message = m.query.View()
 	}
-	header += "  [" + m.groupName() + "]"
+	header += "  group: " + m.groupName() + " (g)"
 	return fit(header, m.width) + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, detail) + "\n" + m.messageLine(message) + "\n" + m.footer()
 }
 func (m Model) pickerView(height int) string {
-	labels := []string{"Automatic — most recently active work tab"}
+	width := m.detailWidth()
+	title, labels := "Open agents in", []string{"Automatic"}
+	intro := []string{"Automatic uses the most recently active work tab, or this tab when none is attached."}
+	if len(m.choices) == 0 {
+		intro = append(intro, "No work tab is attached. Open another terminal tab and run mtly attach <member-id>; it appears here.")
+	}
 	if m.pickMode == "send" {
-		labels = nil
+		title, labels, intro = "Send "+m.sendID+" to tab", nil, nil
 	}
 	for _, c := range m.choices {
 		labels = append(labels, clean(c.Name)+" · "+clean(c.Session))
 	}
-	title := "Pin work tab"
-	if m.pickMode == "send" {
-		title = "Send " + m.sendID + " to tab"
+	lines := []string{fit(title, width), ""}
+	var body []string
+	for _, text := range intro {
+		body = append(body, strings.Split(ansi.Wrap(text, width, ""), "\n")...)
 	}
-	lines := []string{fit(title, m.detailWidth()), ""}
-	start := max(0, m.choice-max(1, height-2)+1)
+	// Short terminals keep the choices and drop the explanation.
+	if len(body) > 0 && len(lines)+len(body)+1+min(len(labels), 2) <= height {
+		lines = append(append(lines, body...), "")
+	}
+	start := max(0, m.choice-max(1, height-len(lines))+1)
 	for i := start; i < len(labels) && len(lines) < height; i++ {
 		label := "  " + labels[i]
 		if i == m.choice {
 			label = "> " + labels[i]
 		}
-		lines = append(lines, fit(label, m.detailWidth()))
+		lines = append(lines, fit(label, width))
 	}
 	return strings.Join(lines, "\n")
 }

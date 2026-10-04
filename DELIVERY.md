@@ -1510,3 +1510,21 @@ PR publication requested by the user. Publishing
 `fix/track-foreground-background-sessions` against fetched `origin/main` at
 `ca92e91`. The base fast-forward changed no source files; the implementation and
 validation evidence above are unchanged. Hosted CI is pending publication.
+
+### Clear monitor header labels — 2026-10-04
+
+The monitor header said `Open agent: this tab` and `[attention]` without saying
+what they meant or which key changes them. It now shows `opens in: <target> (p)`
+and `group: <grouping> (g)`. The target comes from `openClient`, the function
+Open agent uses, so a lost pin or several monitor tabs no longer show "this tab"
+while Open agent refuses. The **p** picker is titled "Open agents in", explains
+Automatic and, with no work tab, says to run `mtly attach <member-id>` in another
+tab. Two errors named the wrong key (`T`, `t`); they now name **p** and the
+attach step. The help action is "Where agents open (p)".
+
+Validation: unit tests for every header state, both errors, the picker hint and
+picker scrolling at heights 4, 8 and full; the tmux pin test now checks
+`, pinned (p)`. vet and the full `go test ./...` passed. The first full run had
+one timing failure in `TestTmuxMouseTicketLinksAndPrefix` ("timed out waiting for
+fixture session"); it passed twice in isolation with and without this change, and
+the full `cmd/motley` package passed on rerun.
