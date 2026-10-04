@@ -35,6 +35,7 @@ type actionDone struct {
 }
 
 type Model struct {
+	blueprints          *blueprintDialog
 	overview            bool
 	opening             *agentPicker
 	panel, actionCursor int
@@ -97,6 +98,8 @@ func nextPoll() tea.Cmd       { return tea.Tick(time.Second, func(time.Time) tea
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case blueprintsLoaded, blueprintEdited, blueprintCopied:
+		return m.blueprintMessage(msg)
 	case tea.MouseMsg:
 		return m.mouse(msg)
 	case importLoaded, importDone:
@@ -202,6 +205,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		if m.blueprints != nil {
+			m.resizeBlueprints()
+		}
 		m.detail.Width, m.detail.Height = m.detailWidth(), m.contentHeight()
 		if m.spawn != nil && m.spawn.step == previewStep {
 			m.spawn.preview.Width = m.detailWidth()
@@ -264,6 +270,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		key := msg.String()
+		if m.blueprints != nil {
+			return m.updateBlueprints(msg)
+		}
 		if m.opening != nil {
 			return m.updateAgentPicker(key)
 		}
@@ -309,6 +318,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return next, cmd
 		}
 		switch key {
+		case "f":
+			return m.beginBlueprints()
 		case "a":
 			return m.beginImport()
 		case "c":
@@ -393,6 +404,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.alert = false
 			return m, m.requestDetail(true)
 		}
+	}
+	if m.blueprints != nil && !m.busy {
+		return m.updateBlueprints(msg)
 	}
 	if m.spawn != nil && !m.busy {
 		return m.updateSpawn(msg)
@@ -672,9 +686,12 @@ func (m Model) View() string {
 	if m.spawn != nil {
 		right = m.spawnView(height)
 	}
+	if m.blueprints != nil {
+		right = m.blueprintsView(height)
+	}
 	border := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("8"))
 	leftBorder, rightBorder := border, border
-	if m.panel == listPanel && m.editor == nil && !m.manager && m.spawn == nil && m.retiring == nil && m.terminating == nil && m.menu == nil && m.importing == nil && m.opening == nil && !m.picking {
+	if m.panel == listPanel && m.blueprints == nil && m.editor == nil && !m.manager && m.spawn == nil && m.retiring == nil && m.terminating == nil && m.menu == nil && m.importing == nil && m.opening == nil && !m.picking {
 		leftBorder = leftBorder.BorderForeground(lipgloss.Color("6"))
 	} else {
 		rightBorder = rightBorder.BorderForeground(lipgloss.Color("6"))

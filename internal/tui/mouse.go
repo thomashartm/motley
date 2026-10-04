@@ -16,10 +16,13 @@ func (m Model) navigationBar() string {
 }
 
 func (m Model) navigationAvailable() bool {
-	return !m.busy && !m.searching && m.spawn == nil && m.editor == nil && !m.manager && m.retiring == nil && m.terminating == nil && m.menu == nil && m.importing == nil && m.opening == nil && !m.picking
+	return !m.busy && !m.searching && m.blueprints == nil && m.spawn == nil && m.editor == nil && !m.manager && m.retiring == nil && m.terminating == nil && m.menu == nil && m.importing == nil && m.opening == nil && !m.picking
 }
 
 func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if m.blueprints != nil {
+		return m.blueprintMouse(msg)
+	}
 	if !m.busy && (m.navigationAvailable() || m.opening != nil) &&
 		m.width >= 60 && m.height >= 10 && msg.X >= 0 && msg.X < m.width && msg.Y >= 2 && msg.Y < 2+m.panelHeight() &&
 		msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress {

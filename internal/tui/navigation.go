@@ -49,6 +49,7 @@ func (m Model) actions() []navigationAction {
 	if m.selectedID() == "" {
 		add("Main actions", "Manage crews (m)", "m", "Opens crew management to add, edit, recolour or delete crews and organise their members.", false)
 		add("Main actions", "Spawn member (s)", "s", "Opens setup for a new member. Launch creates its worktree and starts the chosen agent after you review the preview.", false)
+		add("Main actions", "Prompt templates (f)", "f", "Lists global blueprints. View raw templates, edit them in vi or your default editor, or fill arguments and copy a generated prompt into an external agent. Spawning also offers compatible templates.", false)
 		add("Main actions", "Add existing agent (a)", "a", "Choose Claude or Codex, then select an existing session to add. Import preserves its conversation and files without restarting it.", false)
 		add("Main actions", "Open agent (o)", "o", "Choose a running agent to open. The picker includes all members, even when the main list is filtered.", false)
 		if m.anyOnGitHub() {

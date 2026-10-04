@@ -148,8 +148,38 @@ mtly blueprint validate --repo api
 mtly spawn --repo api --branch feat/example --blueprint feature-plan-first --var 'constraints=Keep it small'
 ```
 
-Repository templates take precedence. The spawn form can edit the prompt in
-`$EDITOR`. Revive preserves agent arguments without replaying the initial prompt.
+Repository templates take precedence. In the spawn form, choose the agent, then
+its compatible blueprint, enter variables and review the rendered prompt before
+launching. The preview's **e** key edits that launch's prompt in `$EDITOR` without
+changing the reusable template. Revive does not replay the initial prompt.
+
+### Manage templates and generate prompts for external agents
+
+Open **Main actions → Prompt templates (f)**. The browser lists every global
+`.md` template, including templates restricted to particular repositories.
+Select one to:
+
+- **View raw template:** read the original Markdown and TOML header; **c** copies it.
+- **Generate prompt:** enter the variables declared in the header's `vars` list,
+  followed by any repository, branch, ticket, name, worktree, crew or issue context
+  the template uses. Unused fields can stay empty. **Tab / Shift-Tab** moves between
+  fields, **Enter** adds a newline, and **Ctrl-s** generates the prompt. Review it,
+  then press **c** to copy the full text. **Esc** returns to the arguments to revise
+  them. Paste the result into the external agent's own conversation.
+- **Edit in vi** or **Edit in default editor:** edit the reusable template file.
+  Default editor uses `$VISUAL`, then `$EDITOR`. If neither is set, Motley opens
+  the macOS default text editor or Linux's default application for Markdown.
+  Commands with arguments work, for example `VISUAL='code --wait'`.
+- **Reload from disk:** read changes after saving in an editor that opens a separate
+  window. Motley also reloads when an editor command returns.
+
+Generation works without a member or repository and does not start an agent or
+send it any text. Issue fields are entered manually in this flow. The clipboard
+uses the same terminal/tmux mechanism as Copy message; terminal clipboard access
+must be enabled. Templates with parse errors remain listed so they can be edited.
+The global directory is `$XDG_CONFIG_HOME/motley/blueprints` when set, otherwise
+`~/.config/motley/blueprints`. Repository overrides are applied during spawning;
+the global manager edits the global files themselves.
 
 GitHub-backed templates can use `{{.Issue.Title}}`, `{{.Issue.Body}}` and
 `{{.Issue.URL}}`. Issue bodies are limited to 32 KiB.
