@@ -101,11 +101,11 @@ func TestSpawnFormTerminal(t *testing.T) {
 	send("j", "> manual")
 	send("j", "> acceptEdits")
 	send("j", "> plan")
-	send("\r", "feat/412-fx-cache · claude · plan")
+	send("\r", "feature/api-412-fx-cache · claude · plan")
 	send("e", "Edited prompt from terminal")
 	send("\r", "Created 412-fx-cache")
 	m := f.manifest("412-fx-cache")
-	if !m.Prompt || m.Blueprint != "" || m.Branch != "feat/412-fx-cache" || m.Mode != "plan" {
+	if !m.Prompt || m.Blueprint != "" || m.Branch != "feature/api-412-fx-cache" || m.Mode != "plan" {
 		t.Fatal(m)
 	}
 	eventually(t, func() bool {

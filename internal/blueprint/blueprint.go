@@ -108,18 +108,31 @@ func (b Blueprint) Allows(repo string) bool {
 // directory duplicate names are errors; the repository wins across directories.
 // An empty repo shows global blueprints, including their repository restrictions.
 func Discover(repoPath, repo string) ([]Blueprint, error) {
+	dir, err := GlobalDir()
+	if err != nil {
+		return nil, err
+	}
+	dirs := []string{dir}
+	if repoPath != "" {
+		dirs = append(dirs, filepath.Join(repoPath, ".motley", "blueprints"))
+	}
+	return discover(dirs, repo)
+}
+
+// GlobalDir is shared by discovery and the template manager.
+func GlobalDir() (string, error) {
 	root := os.Getenv("XDG_CONFIG_HOME")
 	if root == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		root = filepath.Join(home, ".config")
 	}
-	dirs := []string{filepath.Join(root, "motley", "blueprints")}
-	if repoPath != "" {
-		dirs = append(dirs, filepath.Join(repoPath, ".motley", "blueprints"))
-	}
+	return filepath.Join(root, "motley", "blueprints"), nil
+}
+
+func discover(dirs []string, repo string) ([]Blueprint, error) {
 	merged := map[string]Blueprint{}
 	for _, dir := range dirs {
 		paths, err := filepath.Glob(filepath.Join(dir, "*.md"))

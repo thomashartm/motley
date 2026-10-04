@@ -1376,3 +1376,44 @@ documentation checks passed. Reinstalled the updated picker and branch form; the
 previous binary is backed up at `/Users/thomas/.motley/local-fix-backups/20261004T122602Z-spawn-picker/`.
 The earlier broad-suite failures remain disclosed; they were not treated as a
 clean full-suite pass.
+
+## Global prompt templates — PR delivery
+
+Repository rules checked: use Git/gh CLI, retain progress in DELIVERY.md and
+usage instructions in the documentation. Scope: Main actions template browser,
+raw view, vi/default-editor editing, argument entry and copyable prompt generation
+for external agents. Preserve existing blueprint selection/delivery during spawn.
+No repository, worktree or agent session is needed to generate a prompt.
+
+Implemented **Main actions → Prompt templates (f)** with global file discovery,
+raw Markdown/header view, vi and default-editor actions, reload, multiline argument
+entry and generated-prompt preview/copy. `$VISUAL` takes precedence over `$EDITOR`;
+without either, use the macOS text editor or Linux Markdown application. GUI editors
+may return before saving, so Reload remains available. Invalid templates stay
+listed for repair, while spawn discovery continues to reject malformed templates.
+
+The generator uses declared variables plus optional standard context fields. It
+runs without a member/repository and copies the exact rendered text through the
+existing terminal/tmux clipboard path. It does not create a worktree, start an
+agent, fetch GitHub data or send a message. Spawn retains its compatible-blueprint
+picker, variable form and reviewed initial prompt delivery. Raw/rendered views,
+argument values and selection survive resizing; keyboard and list/action mouse
+navigation remain modal. Updated advanced usage documentation.
+
+Validation: focused unit and race tests, a real terminal/tmux check of both
+editor choices and exact clipboard forwarding, blueprint spawn/resume integration,
+vet, CI-pinned lint (0 issues), installer/uninstaller/plugin checks and all four
+macOS/Linux builds passed. The first broad run exposed a stale terminal spawn
+expectation from the earlier branch-format change. Corrected the test to expect
+`feature/api-412-fx-cache`; its focused rerun passed. The final `go test ./...`
+passed, including the full CLI integration package (110 seconds).
+The local executable is built in `bin/motley` (`bin/mtly`); not installed.
+
+PR preparation: publication requested by the user. Created
+`feature/global-prompt-templates` from fetched `origin/main` at `9895b4d`, whose
+source tree matches the validated base. This PR contains only the template feature,
+its tests/documentation and the corrected spawn-test expectation. Hosted CI is
+separate from the completed local validation.
+
+Published [PR #57](https://github.com/thomashartm/motley/pull/57) against `main`.
+Implementation commit: `1ec36dc`. Hosted CI results are pending publication checks.

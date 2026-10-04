@@ -18,7 +18,7 @@ type copiedMsg struct {
 // copyableMessage is the full text behind the message line; the line itself
 // is truncated to the terminal width. Transient states are not messages.
 func (m Model) copyableMessage() string {
-	if m.busy || m.searching {
+	if m.busy || m.searching || m.blueprints != nil {
 		return ""
 	}
 	if m.pollError != "" {

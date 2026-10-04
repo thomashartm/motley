@@ -100,6 +100,16 @@ func wrapFooter(groups []string, width int) []string {
 
 func (m Model) footerGroups() (full, compact []string) {
 	// Match the input handlers: the active dialog owns its footer.
+	if m.blueprints != nil {
+		switch m.blueprints.page {
+		case blueprintArguments:
+			return []string{"[Arguments] tab next · shift+tab previous · enter newline", "ctrl+s generate · esc back"}, []string{"tab/shift+tab field · ctrl+s generate · esc back"}
+		case blueprintRaw, blueprintPrompt:
+			return []string{"[Prompt] ↑↓/PgUp/PgDn scroll · c copy · esc back"}, []string{"↑↓ scroll · c copy · esc back"}
+		default:
+			return []string{"[Templates] ↑↓ choose · enter open · r reload · esc back"}, []string{"↑↓ choose · enter open · r reload · esc back"}
+		}
+	}
 	if m.spawn != nil {
 		switch m.spawn.step {
 		case repoStep:
