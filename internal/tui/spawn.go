@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -107,7 +108,7 @@ func (f *spawnForm) matches() []string {
 	}
 	return r
 }
-func branchPreview(ticket, name string) string {
+func branchPreview(kind, repo, ticket, name string) string {
 	slug := func(s string) string {
 		var out strings.Builder
 		dash := false
@@ -124,12 +125,29 @@ func branchPreview(ticket, name string) string {
 		}
 		return out.String()
 	}
-	part := slug(name)
-	if ticket != "" {
-		part = slug(ticket) + "-" + part
+	part := slug(filepath.Base(strings.TrimSuffix(repo, "/"))) + "-"
+	ticket = spawnTicket(ticket)
+	if ticket != "" && !strings.Contains(ticket, "://") {
+		part += slug(ticket) + "-"
 	}
-	return "feat/" + part
+	return kind + "/" + part + slug(name)
 }
+
+// spawnTicket keeps a pasted GitHub issue URL out of generated branch names.
+func spawnTicket(ticket string) string {
+	ticket = strings.TrimSpace(ticket)
+	u, err := url.Parse(ticket)
+	if err == nil && u.Scheme == "https" && u.Host == "github.com" {
+		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+		if len(parts) == 4 && parts[2] == "issues" {
+			if _, ok := member.IssueNumber(parts[3]); ok {
+				return parts[3]
+			}
+		}
+	}
+	return ticket
+}
+
 func (m Model) beginSpawn() (tea.Model, tea.Cmd) {
 	m.spawn = &spawnForm{query: inputs("")[0]}
 	m.busy = true
@@ -306,7 +324,7 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				f.opts.Repo = matches[f.choice]
-				f.fields = inputs("", "", "")
+				f.fields = inputs("", "", "feature", branchPreview("feature", f.opts.Repo, "", ""))
 				f.field = 0
 				f.step = identityStep
 				f.err = ""
@@ -406,8 +424,8 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if f.step == varsStep {
 				return m.prepareSpawn()
 			}
-			ticket, name, branch := f.fields[0].Value(), strings.TrimSpace(f.fields[1].Value()), f.fields[2].Value()
-			if name == "" || (!f.manualBranch && (branch == "feat/" || strings.HasSuffix(branch, "-"))) {
+			ticket, name, branch := spawnTicket(f.fields[0].Value()), strings.TrimSpace(f.fields[1].Value()), f.fields[3].Value()
+			if name == "" || (!f.manualBranch && strings.HasSuffix(branch, "-")) {
 				f.err = "Enter a name containing letters or digits."
 				return m, nil
 			}
@@ -434,16 +452,35 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
+	if f.step == identityStep && f.field == 2 {
+		if key, ok := msg.(tea.KeyMsg); ok && (key.String() == "left" || key.String() == "right" || key.String() == " ") {
+			kind := "fix"
+			if f.fields[2].Value() == "fix" {
+				kind = "feature"
+			}
+			f.fields[2].SetValue(kind)
+			if f.manualBranch {
+				branch := f.fields[3].Value()
+				if _, suffix, found := strings.Cut(branch, "/"); found {
+					branch = suffix
+				}
+				f.fields[3].SetValue(kind + "/" + branch)
+			} else {
+				f.fields[3].SetValue(branchPreview(kind, f.opts.Repo, f.fields[0].Value(), f.fields[1].Value()))
+			}
+		}
+		return m, nil
+	}
 	if len(f.fields) > 0 {
 		old := f.fields[f.field].Value()
 		var cmd tea.Cmd
 		f.fields[f.field], cmd = f.fields[f.field].Update(msg)
 		if f.step == identityStep && old != f.fields[f.field].Value() {
-			if f.field == 2 {
+			if f.field == 3 {
 				f.manualBranch = true
 			}
 			if !f.manualBranch {
-				f.fields[2].SetValue(branchPreview(f.fields[0].Value(), f.fields[1].Value()))
+				f.fields[3].SetValue(branchPreview(f.fields[2].Value(), f.opts.Repo, f.fields[0].Value(), f.fields[1].Value()))
 			}
 		}
 		return m, cmd
@@ -515,17 +552,9 @@ func (m Model) spawnView(height int) string {
 		input := f.query
 		input.Width = max(1, width-2)
 		lines = append(lines, input.View())
-		matches := f.matches()
-		start := max(0, f.choice-max(1, height-4)+1)
-		for i := start; i < len(matches) && len(lines) < height-1; i++ {
-			prefix := "  "
-			if i == f.choice {
-				prefix = "> "
-			}
-			lines = append(lines, prefix+clean(matches[i]))
-		}
+		lines = append(lines, f.repositoryView(width, max(1, height-3))...)
 	case identityStep, varsStep:
-		labels := []string{"Ticket (optional)", "Name", "Branch"}
+		labels := []string{"Ticket or GitHub issue URL (optional)", "Name", "Branch type (←/→)", "Branch"}
 		if f.step == varsStep {
 			labels = f.vars
 		}
@@ -537,7 +566,14 @@ func (m Model) spawnView(height int) string {
 			if i == f.field {
 				prefix = "> "
 			}
-			lines = append(lines, prefix+clean(labels[i]), v.View())
+			value := v.View()
+			if f.step == identityStep && i == 2 {
+				value = "[feature]  fix"
+				if v.Value() == "fix" {
+					value = "feature  [fix]"
+				}
+			}
+			lines = append(lines, prefix+clean(labels[i]), value)
 		}
 	case agentStep, blueprintStep, modeStep, crewStep:
 		labels := []string{"claude", "codex", "opencode"}

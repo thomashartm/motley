@@ -22,9 +22,15 @@ Use the member ID printed by `spawn` or listed by `ls`.
 | `--no-gh` | Skip the GitHub issue lookup. |
 | `--create-crew` | Create the crew suggested by a GitHub issue. |
 
-If two entrypoints contain the same repository name, the picker shows full paths.
-For the CLI, choose explicitly: `--repo ~/projects/aderis/api`. Repeated paths
+The picker groups repositories by entrypoint in config order and shows every
+repository as `name (full path)`. Long paths wrap. If names repeat across roots,
+choose explicitly in the CLI: `--repo ~/projects/aderis/api`. Repeated paths
 to the same physical repository appear only once. All entrypoints must be readable.
+
+In the spawn form, branch suggestions use `feature/<repo>-<ticket>-<name>`.
+The ticket is optional; a pasted GitHub issue URL contributes only its issue
+number. Tab to **Branch type** and use **←/→** to choose **feature** or **fix**.
+The **Branch** field remains editable.
 
 Launching creates and pushes a new branch. Local `.env`, `.env.*` and
 `graphify-out` artifacts are copied into the new worktree.

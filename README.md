@@ -47,7 +47,8 @@ Rerun the installer to update from `main`, then reopen Motley.
 
 1. Put your repository under `~/projects`, or [configure your repository directories](#configuration).
 2. Run `mtly` and press **s**.
-3. Choose a repository, agent and task settings.
+3. Choose a repository, task and agent. Select **feature** or **fix** for the branch
+   prefix; for example, `feature/backend-2991-allow-exempt-tax-code`.
 4. Review and launch.
 5. Select the member and press **Enter** to open it.
 
@@ -120,7 +121,8 @@ monitor_bell = false
 ```
 
 Each entrypoint supplies the repositories directly inside it; scanning is not
-recursive. Press **s** to choose a repository from any configured directory.
+recursive. Press **s** to choose a repository, grouped by entrypoint with its full
+path shown in parentheses.
 The legacy `repos_root` setting still works; `repos_roots` takes precedence.
 
 Run `mtly config` to check the repository and worktree paths.

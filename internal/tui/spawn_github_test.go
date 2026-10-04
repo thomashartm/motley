@@ -23,7 +23,7 @@ func identityForm(t *testing.T) Model {
 	t.Helper()
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 140, Height: 40})
 	m.github = fakeGitHub("", nil)
-	m.spawn = &spawnForm{step: identityStep, fields: inputs("412", "FX", "feat/412-fx")}
+	m.spawn = &spawnForm{step: identityStep, fields: inputs("412", "FX", "feature", "feature/api-412-fx")}
 	m.spawn.opts.Repo = "api"
 	return m
 }

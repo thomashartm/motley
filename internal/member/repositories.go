@@ -5,17 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
 // DiscoverRepos scans each entrypoint once, without descending into nested
-// directories. Only main repositories are eligible for spawning worktrees.
+// directories. Absolute paths are ordered by configured root, then by name.
+// Only main repositories are eligible for spawning worktrees.
 func DiscoverRepos(roots []string) ([]string, error) {
-	type repository struct{ name, path string }
-	var repos []repository
+	var repos []string
 	seen := map[string]bool{}
-	names := map[string]map[string]bool{}
 	for _, root := range roots {
 		entries, err := os.ReadDir(root)
 		if err != nil {
@@ -29,10 +27,6 @@ func DiscoverRepos(roots []string) ([]string, error) {
 			if err != nil {
 				continue
 			}
-			if names[entry.Name()] == nil {
-				names[entry.Name()] = map[string]bool{}
-			}
-			names[entry.Name()][path] = true
 			if seen[path] {
 				continue
 			}
@@ -42,19 +36,10 @@ func DiscoverRepos(roots []string) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			repos = append(repos, repository{entry.Name(), selection})
+			repos = append(repos, selection)
 		}
 	}
-	var selections []string
-	for _, repo := range repos {
-		if len(names[repo.name]) > 1 {
-			selections = append(selections, repo.path)
-		} else {
-			selections = append(selections, repo.name)
-		}
-	}
-	sort.Strings(selections)
-	return selections, nil
+	return repos, nil
 }
 
 // ResolveRepo accepts a unique basename, or an absolute path directly beneath

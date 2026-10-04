@@ -1354,7 +1354,25 @@ matches the local build. Reopen an existing TUI to load the update.
 
 PR preparation: the user requested publication of the multi-entrypoint feature
 and pending README improvements. Repository rules rechecked; Git/gh CLI only.
-Publishing on `feat/multiple-repository-roots`, based on fetched `origin/main`
+Publishing on `feature/motley-multiple-repository-roots`, based on fetched `origin/main`
 at `c05e93e`. The PR includes the shorter README, contribution guidance and
 advanced/troubleshooting pages. Local validation and intermittent full-suite
 failures are disclosed above; remote CI is separate evidence.
+
+Before publication, the user requested grouped repository presentation and
+shorter branch suggestions. Discovery now preserves configured root order and
+returns full selectors. The picker groups by root, renders `name (full path)`,
+wraps paths, and keeps selection tied to repositories while scrolling/filtering.
+The spawn form defaults to `feature/<repo>-<ticket>-<name>` and provides a
+`feature`/`fix` choice. Ticket is optional; pasted GitHub issue URLs contribute
+only their issue number. Manual branch edits survive task-name edits; explicitly
+changing branch type changes only the prefix of a manually edited branch.
+Added rendering/filter/scroll/selection and branch-form interaction regression
+tests, and updated usage docs to match.
+
+Final refinement validation: member/config/TUI tests and race checks, focused CLI
+spawn/config/blueprint integration tests, vet, lint (0 issues), cross-builds and
+documentation checks passed. Reinstalled the updated picker and branch form; the
+previous binary is backed up at `/Users/thomas/.motley/local-fix-backups/20261004T122602Z-spawn-picker/`.
+The earlier broad-suite failures remain disclosed; they were not treated as a
+clean full-suite pass.

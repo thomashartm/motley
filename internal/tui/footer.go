@@ -105,6 +105,9 @@ func (m Model) footerGroups() (full, compact []string) {
 		case repoStep:
 			return []string{"[Spawn] Nav: ↑↓ select · type to filter", "Act: enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}
 		case identityStep, varsStep:
+			if m.spawn.step == identityStep && m.spawn.field == 2 {
+				return []string{"[Spawn] Nav: ↑↓/tab field · ←→ branch type", "Act: enter next · esc cancel"}, []string{"[Spawn] ←→ branch type", "enter next · esc cancel"}
+			}
 			return []string{"[Spawn] Nav: ↑↓/tab field · ←→ cursor", "Act: enter next · esc cancel"}, []string{"[Spawn] ↑↓ field", "enter next · esc cancel"}
 		case agentStep, blueprintStep, modeStep:
 			return []string{"[Spawn] Nav: ↑↓/jk select", "Act: enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}

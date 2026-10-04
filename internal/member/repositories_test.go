@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -33,12 +32,12 @@ func TestRepositoryEntrypoints(t *testing.T) {
 	init(filepath.Join(aderis, "nested", "hidden"))
 	roots := []string{projects, aderis}
 	got, err := DiscoverRepos(roots)
-	if err != nil || !reflect.DeepEqual(got, []string{"backend", "motley"}) {
+	if err != nil || !reflect.DeepEqual(got, []string{filepath.Join(projects, "motley"), filepath.Join(aderis, "backend")}) {
 		t.Fatal(got, err)
 	}
 	for _, name := range got {
 		path, err := ResolveRepo(roots, name)
-		if err != nil || filepath.Base(path) != name {
+		if err != nil || filepath.Base(path) != filepath.Base(name) {
 			t.Fatal(path, err)
 		}
 	}
@@ -53,9 +52,7 @@ func TestRepositoryEntrypoints(t *testing.T) {
 	init(first)
 	init(second)
 	got, err = DiscoverRepos(roots)
-	want := []string{first, second, "backend", "motley"}
-	// Absolute selectors sort by path rather than configured root order.
-	sort.Strings(want)
+	want := []string{first, filepath.Join(projects, "motley"), second, filepath.Join(aderis, "backend")}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatal(got, err)
 	}

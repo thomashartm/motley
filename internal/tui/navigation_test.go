@@ -156,7 +156,7 @@ func TestArrowConfirmationsAndSpawn(t *testing.T) {
 	if m.editor != nil {
 		t.Fatal("delete cancel")
 	}
-	m.spawn = &spawnForm{step: identityStep, fields: inputs("", "Example", "feat/example")}
+	m.spawn = &spawnForm{step: identityStep, fields: inputs("", "Example", "feature", "feature/api-example")}
 	m = arrow(m, tea.KeyDown)
 	if m.spawn.field != 1 {
 		t.Fatal("spawn down field")
