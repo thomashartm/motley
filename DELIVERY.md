@@ -1510,3 +1510,35 @@ PR publication requested by the user. Publishing
 `fix/track-foreground-background-sessions` against fetched `origin/main` at
 `ca92e91`. The base fast-forward changed no source files; the implementation and
 validation evidence above are unchanged. Hosted CI is pending publication.
+
+## Preserve Shift+Enter inside tmux agents — 2026-10-04
+
+Repository rules checked: Git/gh CLI; delivery evidence here. Kept this follow-up
+separate from the access/selection work (draft PR #62, hosted CI green).
+
+Live diagnosis: tmux 3.6a had extended-keys off, xterm output format, and the
+Ghostty client lacked the extkeys capability. A raw-byte terminal fixture
+reproduced Shift+Enter arriving as a carriage return. Enabling extended keys
+alone does not repair a running pane that missed negotiation at startup.
+
+Generated configuration now enables extended-key support and xterm-compatible
+terminal capability detection, selects CSI-u on tmux 3.5+, and forwards Shift+Enter
+literally in live Motley member sessions or foreground Codex/Claude/OpenCode
+panes. The binding preserves plain Enter and falls back to native handling in
+other sessions and after an agent has ended. Existing user files remain untouched
+by `mtly init`; upgrade instructions describe the small manual config addition.
+
+Validation: the full Go suite passed. A real tmux/PTY test reproduces the old
+failure and checks both Shift+Enter encodings, plain Enter, Ctrl+C, Tab, arrows,
+live-pane compatibility, capability discovery after reattachment, and native
+fallback outside active agents. The same test keeps the older-tmux config path
+loadable without requiring the newer CSI-u option. Vet, CI-pinned lint (0 issues),
+local build, four-platform cross-build and diff checks passed. The repository
+change is prepared as a separate draft PR against `origin/main` at `34e43fa`.
+
+Applied the same block to the user's existing Motley tmux config and live server.
+Backup: `~/.motley/local-fix-backups/shift-enter-20261004T161230Z/`. An attempted
+client reconnection left the terminal at the standalone Motley overview; no tmux
+client was attached on readback. Reopening an agent picks up terminal capabilities.
+All pane PIDs/terminals were unchanged, and the existing Codex and Claude processes
+were confirmed still running. No prompt or key was sent to a live agent.

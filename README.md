@@ -125,6 +125,10 @@ stop all explicitly tracked Claude conversations.
 
 ## Configuration
 
+Inside tmux, **Shift+Enter** inserts a line break in agents that support it;
+**Enter** submits. If both keys submit, see the
+[extended-key configuration](docs/troubleshooting.md#shiftenter-submits-instead-of-inserting-a-line-break).
+
 Motley creates `~/.motley/config.toml` on first launch. Edit the roots to suit your setup:
 
 ```toml
