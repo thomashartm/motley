@@ -4,9 +4,11 @@
   <img src="motley-logo.png" alt="Motley logo" width="240">
 </p>
 
-**Motley brings your coding agents into one view so you can remember what each
-session is working on, see what’s running, and know where your attention is
-needed—without keeping track of countless terminal tabs.**
+**Motley brings your all your local coding agents into a single view. 
+* See what each session is working on
+* see what’s running and know where your attention is
+needed
+* Keep track of countless terminals or terminal tabs easily or just spawn them inside motley **
 
 Works with Claude Code, Codex and OpenCode on your local machine.
 
