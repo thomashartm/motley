@@ -230,8 +230,11 @@ Use your own prefix if you changed it.
 | **[** | Enter scrollback; **q** leaves it. |
 | **Ctrl-a** | Send a literal Ctrl-a to the agent. |
 
-On local macOS, drag to select and copy text; paste with **Cmd-V**. Over SSH,
-`pbcopy` writes to the Mac running tmux. Linux uses its existing clipboard setup.
+In agent panes on local macOS, drag to select and copy text; paste with **Cmd-V**.
+Over SSH, `pbcopy` writes to the Mac running tmux. Linux uses its existing
+clipboard setup. In the Motley overview or monitor, drag to select Actions text
+or complete member rows, then press **Ctrl+C** to copy through the terminal
+clipboard. **Esc** clears the selection. Use tmux scrollback for other pane text.
 
 ## Stop, resume and retire
 

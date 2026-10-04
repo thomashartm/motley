@@ -73,12 +73,15 @@ retired members or deleted worktrees.
 ## Copying or mouse controls do not work
 
 1. Reattach the member or rerun `mtly monitor` after upgrading.
-2. On local macOS, drag text and paste with **Cmd-V**.
-3. For status/error messages, press **c** or click the message above the footer.
+2. In the overview or monitor, drag across list rows or Actions text, then press
+   **Ctrl+C** to copy the highlighted selection. **Esc** clears it.
+3. In agent panes on local macOS, drag text and paste with **Cmd-V**.
+4. For status/error messages, press **c** or click the message above the footer.
 
-Over SSH, macOS drag copying writes to the remote Mac's clipboard.
-Message copying uses the terminal/tmux clipboard integration; with tmux
-`set-clipboard off`, a copied message may only reach the tmux paste buffer.
+Over SSH, macOS agent-pane drag copying writes to the remote Mac's clipboard.
+Message and overview-selection copying use the terminal/tmux clipboard
+integration; with tmux `set-clipboard off`, copying may only reach the tmux paste
+buffer. Motley reports this instead of claiming a successful clipboard copy.
 
 For an older installation, add the following to
 `~/.config/motley/motley.tmux.conf`, then reload it. Use your XDG path if configured.

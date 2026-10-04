@@ -1510,3 +1510,36 @@ PR publication requested by the user. Publishing
 `fix/track-foreground-background-sessions` against fetched `origin/main` at
 `ca92e91`. The base fast-forward changed no source files; the implementation and
 validation evidence above are unchanged. Hosted CI is pending publication.
+
+## Session access and text selection (#61) — 2026-10-04
+
+Repository rules checked: Git/gh CLI, progress recorded here. Created issue #61
+from the accepted proposal and started `feat/61-access-labels-copy-selection`
+on merged `origin/main` (`34e43fa`).
+
+Implemented independent ACC (TMX/EXT/MIX) and MOD (FG/BG/F+B)
+columns with labels at most three characters, per-conversation access in Details,
+Actions text selection and complete-row copying with full titles. Drag gestures
+in these areas do not dispatch actions or open links; ordinary clicks activate on release.
+Ctrl+C copies a selection; Esc clears it. The additional request makes all AG
+badges grey. Refreshes preserve selection by member identity and clear it when
+selected content disappears or changes; resizing and navigation clear it too.
+
+The macOS tmux monitor drag binding now forwards gestures to the TUI. Agent panes
+retain native copy-mode, and the monitor still supports explicit tmux scrollback.
+Clipboard copying uses the existing terminal/OSC 52 route and reports forwarding
+failures. README and clipboard documentation describe the interaction.
+
+Validation: `go test ./...` passed, including real tmux overview and monitor
+drag/copy tests that verify untruncated titles, terminal clipboard forwarding,
+and selecting Retire text without activating it. Selection tests cover reversed
+multirow drags, Unicode graphemes, refresh identity, resize, Esc, copy errors, and
+Ctrl+C behavior. Access/grouping and narrow layout checks passed. Member/TUI/tmux
+race checks, `go vet ./...`, CI-pinned golangci-lint (0 issues), local build,
+four-platform cross-build and diff checks passed. The initial new terminal test
+needed fixture mouse reporting enabled and a row-specific target to avoid hitting
+the Details access field; the corrected test passes in the full suite.
+
+Built in `bin/motley` (`bin/mtly`); not installed. Publishing a reviewable draft PR
+against fetched `origin/main` at `34e43fa`; hosted CI remains separate from local
+validation. No live member session was changed or restarted for this work.

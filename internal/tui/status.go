@@ -50,6 +50,19 @@ func statusIcon(status string) (string, lipgloss.Color) {
 		return "○", lipgloss.Color("8")
 	}
 }
+
+func accessDescription(access string) string {
+	switch access {
+	case "TMX":
+		return "TMX · Motley-managed tmux connection"
+	case "EXT":
+		return "EXT · External terminal or application"
+	case "MIX":
+		return "MIX · Managed tmux and external conversations"
+	default:
+		return "No live connection"
+	}
+}
 func since(row member.Row) string {
 	if row.Since == 0 || !row.Alive {
 		return "—"

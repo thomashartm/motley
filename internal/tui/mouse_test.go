@@ -10,7 +10,16 @@ import (
 )
 
 func click(m Model, x, y int) Model {
-	return update(m, tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+	next, _ := mouseClick(m, x, y)
+	return next.(Model)
+}
+
+func mouseClick(m Model, x, y int) (tea.Model, tea.Cmd) {
+	next, cmd := m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+	if cmd != nil {
+		return next, cmd
+	}
+	return next.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionRelease})
 }
 
 func listScreenY(t *testing.T, m Model, text string) int {

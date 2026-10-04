@@ -48,7 +48,7 @@ func TestCrewEditorTerminal(t *testing.T) {
 	// The terminal remains responsive and grouping displays the member table.
 	terminal.send(t, "g")
 	eventually(t, func() bool {
-		return strings.Contains(terminal.text(), "MEMBER") && strings.Contains(terminal.text(), "1 members")
+		return strings.Contains(terminal.text(), "NAM") && strings.Contains(terminal.text(), "1 members")
 	})
 	send("m", "a add")
 	terminal.send(t, "x")

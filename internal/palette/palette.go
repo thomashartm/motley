@@ -36,15 +36,15 @@ func Resolve(id, override, crew string) Color {
 	return Colors[int(h.Sum32())%len(Colors)]
 }
 func Badge(agent string) (string, Color) {
-	name, color := "??", "grey"
+	name := "??"
 	switch agent {
 	case "claude":
-		name, color = "CC", "orange"
+		name = "CC"
 	case "codex":
-		name, color = "CX", "green"
+		name = "CX"
 	case "opencode":
-		name, color = "OC", "purple"
+		name = "OC"
 	}
-	c, _ := Lookup(color)
+	c, _ := Lookup("grey")
 	return name, c
 }

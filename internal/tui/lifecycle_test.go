@@ -64,7 +64,7 @@ func TestTerminateSelectedMemberAndCancel(t *testing.T) {
 	m := update(newModel(true, true, "client", nil), tea.WindowSizeMsg{Width: 100, Height: 25})
 	m = update(m, snapshot{rows: []member.Row{row("alpha", true), row("beta", true)}})
 	// Select beta by clicking its list row, then Actions in the bottom bar.
-	m = update(m, tea.MouseMsg{X: 5, Y: listScreenY(t, m, "beta"), Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+	m = click(m, 5, listScreenY(t, m, "beta"))
 	m = update(m, tea.MouseMsg{X: ansi.StringWidth(m.navigationBar()[:strings.Index(m.navigationBar(), "[3 Actions]")]) + 1, Y: 24, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
 	if m.selectedID() != "beta" || !strings.Contains(m.View(), "Actions: beta") {
 		t.Fatal("action target is not selected member")
@@ -79,7 +79,7 @@ func TestTerminateSelectedMemberAndCancel(t *testing.T) {
 		t.Fatal("terminate action missing")
 	}
 	m.actionCursor = index
-	next, cmd := m.Update(tea.MouseMsg{X: m.listWidth() + 4, Y: actionScreenY(t, m, "Terminate agent (d)"), Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+	next, cmd := mouseClick(m, m.listWidth()+4, actionScreenY(t, m, "Terminate agent (d)"))
 	m = next.(Model)
 	if cmd != nil || m.terminating == nil || m.terminating.id != "beta" || m.busy {
 		t.Fatal("terminate should confirm selected target")

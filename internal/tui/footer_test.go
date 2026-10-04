@@ -77,7 +77,7 @@ func assertFooterFits(t *testing.T, m Model) {
 		if strings.TrimSpace(strings.ReplaceAll(ansi.Cut(lines[4], m.listWidth()+2, m.width), "│", "")) != "" {
 			t.Fatal("right panel divider needs a blank row below")
 		}
-		if m.group != "crew" && !strings.HasPrefix(lines[4], "│ST AG") {
+		if m.group != "crew" && !strings.HasPrefix(lines[4], "│ ST AG") {
 			t.Fatal("list column headings must sit directly below the divider")
 		}
 	}
