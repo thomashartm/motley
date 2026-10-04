@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strings"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/thomashartm/motley/internal/member"
 )
@@ -117,37 +115,6 @@ func (m Model) updateImport(key string) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-func (m Model) importStart(height int) int { return max(0, m.importing.cursor-max(1, (height-1)/2)+1) }
-func (m Model) importView(height int) string {
-	d := m.importing
-	lines := []string{"Add existing " + importAgentLabel(d.agent) + " — select to add"}
-	if d.replaceID != "" {
-		lines[0] = "Switch tracked session — both sessions keep running"
-	}
-	if len(d.sessions) == 0 {
-		lines = append(lines, "No unregistered "+d.agent+" sessions.")
-	}
-	for i := m.importStart(height); i < len(d.sessions) && len(lines) < height; i++ {
-		s := d.sessions[i]
-		name := s.Name
-		if name == "" {
-			name = s.SessionID
-		}
-		lines = append(lines, control(clean(name)+" · "+clean(s.Status), i == d.cursor))
-		if len(lines) < height {
-			label := s.Cwd
-			if d.replaceID != "" {
-				label = s.SessionID + " · " + s.Cwd
-			}
-			lines = append(lines, "  "+clean(label))
-		}
-	}
-	for i := range lines {
-		lines[i] = fit(lines[i], m.detailWidth())
-	}
-	return strings.Join(lines[:min(len(lines), height)], "\n")
-}
-
 func importAgentLabel(agent string) string {
 	if agent == "codex" {
 		return "Codex"

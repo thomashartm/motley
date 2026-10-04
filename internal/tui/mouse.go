@@ -72,16 +72,8 @@ func (m Model) mouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if m.importing != nil && !m.busy && m.width >= 60 && m.height >= 10 && msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress && msg.X > m.listWidth()+2 && msg.X < m.width-1 {
-		y := m.panelContentY(msg.Y) - 1
-		index := m.importStart(m.contentHeight()) + y/2
-		if y >= 0 && msg.Y < 2+m.panelHeight() && index < len(m.importing.sessions) {
-			d := *m.importing
-			d.cursor = index
-			m.importing = &d
-			return m.updateImport("enter")
-		}
-		return m, nil
+	if m.importing != nil {
+		return m.importMouse(msg)
 	}
 	if !m.navigationAvailable() || m.width < 60 || m.height < 10 || msg.X < 0 || msg.X >= m.width || msg.Y < 0 || msg.Y >= m.height {
 		return m, nil
