@@ -1414,3 +1414,6 @@ PR preparation: publication requested by the user. Created
 source tree matches the validated base. This PR contains only the template feature,
 its tests/documentation and the corrected spawn-test expectation. Hosted CI is
 separate from the completed local validation.
+
+Published [PR #57](https://github.com/thomashartm/motley/pull/57) against `main`.
+Implementation commit: `1ec36dc`. Hosted CI results are pending publication checks.
