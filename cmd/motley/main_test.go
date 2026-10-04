@@ -54,6 +54,14 @@ func TestBinarySmoke(t *testing.T) {
 	if err != nil || !strings.Contains(out, "version") || !strings.Contains(out, "config.toml") {
 		t.Fatalf("help: %v\n%s", err, out)
 	}
+	if err := os.WriteFile(path, []byte("repos_roots = ['~/projects', '~/projects/aderis']\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err = run("config")
+	want = "motley smoke\nrepos_roots:\n  - " + filepath.Join(home, "projects") + "\n  - " + filepath.Join(home, "projects/aderis") + "\nworktrees_root: " + filepath.Join(home, "worktrees") + "\n"
+	if err != nil || out != want {
+		t.Fatalf("multiple roots: %v\ngot %q\nwant %q", err, out, want)
+	}
 	if err := os.WriteFile(path, []byte("schema = ["), 0o600); err != nil {
 		t.Fatal(err)
 	}

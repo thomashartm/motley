@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-const defaultConfig = "schema = 1\nrepos_root = \"~/projects\"\nworktrees_root = \"~/worktrees\"\nmonitor_bell = false\n"
+const defaultConfig = "schema = 1\nrepos_roots = [\"~/projects\"]\nworktrees_root = \"~/worktrees\"\nmonitor_bell = false\n"
 
 // Ensure creates ~/.motley/config.toml once. An existing legacy configuration is
 // copied byte-for-byte, including comments and settings unknown to this version.

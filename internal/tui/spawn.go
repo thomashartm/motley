@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -139,15 +140,9 @@ func (m Model) beginSpawn() (tea.Model, tea.Cmd) {
 		if err != nil {
 			return spawnLoaded{err: err}
 		}
-		entries, err := os.ReadDir(cfg.ReposRoot)
+		repos, err := member.DiscoverRepos(cfg.RepositoryRoots())
 		if err != nil {
 			return spawnLoaded{err: err}
-		}
-		var repos []string
-		for _, e := range entries {
-			if _, err := member.ResolveRepo(cfg.ReposRoot, e.Name()); err == nil {
-				repos = append(repos, e.Name())
-			}
 		}
 		return spawnLoaded{cfg: cfg, repos: repos}
 	}
@@ -173,7 +168,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.spawnCfg = msg.cfg
 			f.repos = msg.repos
 			if len(f.repos) == 0 {
-				f.err = "No main repositories found under " + msg.cfg.ReposRoot
+				f.err = "No main repositories found under " + strings.Join(msg.cfg.RepositoryRoots(), ", ")
 			}
 		}
 	case spawnPrepared:
@@ -356,11 +351,11 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.busy = true
 					m.busyText = "Loading blueprints…"
 					return m, func() tea.Msg {
-						path, err := member.ResolveRepo(cfg.ReposRoot, repo)
+						path, err := member.ResolveRepo(cfg.RepositoryRoots(), repo)
 						if err != nil {
 							return spawnLoaded{forBlueprint: true, err: err}
 						}
-						bs, err := blueprint.Discover(path, repo)
+						bs, err := blueprint.Discover(path, filepath.Base(repo))
 						var filtered []blueprint.Blueprint
 						for _, b := range bs {
 							if b.Agent == agent || len(b.Args) == 0 {

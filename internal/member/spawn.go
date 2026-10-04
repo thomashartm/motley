@@ -45,10 +45,13 @@ func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
 			return Prepared{}, fmt.Errorf("name, ticket and repo must not contain control characters")
 		}
 	}
-	repo, err := ResolveRepo(cfg.ReposRoot, opts.Repo)
+	repo, err := ResolveRepo(cfg.RepositoryRoots(), opts.Repo)
 	if err != nil {
 		return Prepared{}, err
 	}
+	// A qualified repository selection must never become a worktree subpath
+	// or change the repository name used by blueprint filters and manifests.
+	opts.Repo = filepath.Base(opts.Repo)
 	vars, err := blueprint.Variables(opts.Vars)
 	if err != nil {
 		return Prepared{}, err
@@ -251,9 +254,9 @@ func SpawnPrepared(p Prepared, progress io.Writer) (Manifest, error) {
 	return m, applyAppearance(m, crews)
 }
 
-func ResolveRepo(root, name string) (string, error) {
+func resolveRepoAt(root, name string) (string, error) {
 	if name == "" || name == "." || name == ".." || filepath.Base(name) != name {
-		return "", fmt.Errorf("--repo must be a directory name directly under repos_root")
+		return "", fmt.Errorf("--repo must select a directory directly under a configured repository root")
 	}
 	path, err := filepath.Abs(filepath.Join(root, name))
 	if err != nil {

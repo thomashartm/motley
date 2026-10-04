@@ -73,3 +73,55 @@ func TestLoad(t *testing.T) {
 		})
 	}
 }
+
+func TestMultipleRepositoryRoots(t *testing.T) {
+	for _, tc := range []struct {
+		name, content string
+		want          []string
+		wantErr       bool
+	}{
+		{name: "multiple", content: `repos_roots = ["~/projects", "~/projects/aderis"]`, want: []string{"~/projects", "~/projects/aderis"}},
+		{name: "deduplicate", content: `repos_roots = ["~/projects", "~/projects/", "~/projects/aderis"]`, want: []string{"~/projects", "~/projects/aderis"}},
+		{name: "plural takes precedence", content: "repos_root = '/legacy'\nrepos_roots = ['/one', '/two']", want: []string{"/one", "/two"}},
+		{name: "empty list", content: `repos_roots = []`, wantErr: true},
+		{name: "blank entry", content: `repos_roots = ["/one", " "]`, wantErr: true},
+		{name: "wrong entry type", content: `repos_roots = ["/one", 42]`, wantErr: true},
+		{name: "wrong list type", content: `repos_roots = "/one"`, wantErr: true},
+		{name: "blank legacy", content: `repos_root = ""`, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			path := filepath.Join(home, ".motley", "config.toml")
+			if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(tc.content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := Load()
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("accepted invalid roots")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			roots := cfg.RepositoryRoots()
+			if len(roots) != len(tc.want) {
+				t.Fatal(roots)
+			}
+			for i, want := range tc.want {
+				if roots[i] != strings.Replace(want, "~/", home+"/", 1) {
+					t.Fatal(roots)
+				}
+			}
+			data, err := os.ReadFile(path)
+			if err != nil || string(data) != tc.content {
+				t.Fatal("loading rewrote existing configuration", err)
+			}
+		})
+	}
+}

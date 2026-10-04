@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
@@ -17,17 +18,19 @@ func blueprintCommand() *cobra.Command {
 	root.PersistentFlags().StringVar(&repo, "repo", "", "Include repository blueprints and filter by repo")
 	load := func() ([]blueprint.Blueprint, error) {
 		path := ""
+		repoName := ""
 		if repo != "" {
+			repoName = filepath.Base(repo)
 			cfg, err := config.Load()
 			if err != nil {
 				return nil, err
 			}
-			path, err = member.ResolveRepo(cfg.ReposRoot, repo)
+			path, err = member.ResolveRepo(cfg.RepositoryRoots(), repo)
 			if err != nil {
 				return nil, err
 			}
 		}
-		return blueprint.Discover(path, repo)
+		return blueprint.Discover(path, repoName)
 	}
 	root.AddCommand(&cobra.Command{Use: "list", Short: "List global blueprints, or the effective set for --repo", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		bs, err := load()

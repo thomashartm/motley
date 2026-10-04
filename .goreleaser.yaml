@@ -27,6 +27,7 @@ archives:
     files:
       - LICENSE
       - README.md
+      - docs/*.md
       - uninstall.sh
       - motley-logo.png
       - motley-screen.png

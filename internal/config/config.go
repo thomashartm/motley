@@ -12,10 +12,11 @@ import (
 
 // Config contains the root paths used by motley.
 type Config struct {
-	Schema        int    `toml:"schema"`
-	ReposRoot     string `toml:"repos_root"`
-	WorktreesRoot string `toml:"worktrees_root"`
-	MonitorBell   bool   `toml:"monitor_bell"`
+	Schema        int      `toml:"schema"`
+	ReposRoot     string   `toml:"repos_root"`
+	ReposRoots    []string `toml:"repos_roots"`
+	WorktreesRoot string   `toml:"worktrees_root"`
+	MonitorBell   bool     `toml:"monitor_bell"`
 }
 
 // Load creates the config once, defaults missing settings, and expands ~/.
@@ -39,12 +40,37 @@ func Load() (Config, error) {
 	if cfg.Schema != 1 {
 		return Config{}, fmt.Errorf("config %s: unsupported schema %d (supported: 1)", path, cfg.Schema)
 	}
-	if strings.TrimSpace(cfg.ReposRoot) == "" || strings.TrimSpace(cfg.WorktreesRoot) == "" {
-		return Config{}, fmt.Errorf("config %s: repos_root and worktrees_root must not be empty", path)
+	if strings.TrimSpace(cfg.WorktreesRoot) == "" {
+		return Config{}, fmt.Errorf("config %s: worktrees_root must not be empty", path)
 	}
-	cfg.ReposRoot = expandHome(cfg.ReposRoot, home)
+	roots := cfg.RepositoryRoots()
+	if len(roots) == 0 {
+		return Config{}, fmt.Errorf("config %s: repos_roots must not be empty", path)
+	}
+	cfg.ReposRoots = nil
+	seen := map[string]bool{}
+	for _, root := range roots {
+		if strings.TrimSpace(root) == "" {
+			return Config{}, fmt.Errorf("config %s: repository roots must not be empty", path)
+		}
+		root = filepath.Clean(expandHome(root, home))
+		if !seen[root] {
+			cfg.ReposRoots = append(cfg.ReposRoots, root)
+			seen[root] = true
+		}
+	}
+	cfg.ReposRoot = cfg.ReposRoots[0]
 	cfg.WorktreesRoot = expandHome(cfg.WorktreesRoot, home)
 	return cfg, nil
+}
+
+// RepositoryRoots prefers the plural setting while supporting existing configs
+// and callers that still supply the original single root.
+func (c Config) RepositoryRoots() []string {
+	if c.ReposRoots != nil {
+		return c.ReposRoots
+	}
+	return []string{c.ReposRoot}
 }
 
 func expandHome(path, home string) string {
