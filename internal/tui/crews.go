@@ -306,15 +306,19 @@ func (m Model) crewTable(height, width int) string {
 		return strings.Join(append(lines, "No members in this crew."), "\n")
 	}
 	// The rightmost columns disappear before shrinking the identity columns.
-	widths := []int{2, 12, 5, 6, 8}
-	headers := []string{"ST", "MEMBER", "AGENT", "TICKET", "REPO"}
+	widths := []int{2, 2, 3, 3, 8}
+	headers := []string{"ST", "AG", "ACC", "MOD", "NAM"}
+	if width >= 40 {
+		widths = append(widths, 6, 8)
+		headers = append(headers, "TKT", "REP")
+	}
 	if width >= 56 {
 		widths = append(widths, 12)
-		headers = append(headers, "BRANCH")
+		headers = append(headers, "BRN")
 	}
 	if width >= 64 {
 		widths = append(widths, 5)
-		headers = append(headers, "SINCE")
+		headers = append(headers, "AGE")
 	}
 	if width >= 76 {
 		widths = append(widths, 10)
@@ -324,7 +328,7 @@ func (m Model) crewTable(height, width int) string {
 	for _, w := range widths {
 		total += w
 	}
-	widths[1] = max(5, widths[1]+width-total)
+	widths[4] = max(1, widths[4]+width-total)
 	format := func(values []string) string {
 		var cells []string
 		for i, w := range widths {
@@ -345,10 +349,7 @@ func (m Model) crewTable(height, width int) string {
 		if name == "" {
 			name = r.ID
 		}
-		if location := r.SessionLocation(); location != "" {
-			name = "[" + location + "] " + name
-		}
-		vals := []string{lipgloss.NewStyle().Foreground(sc).Render(icon), clean(name), colored(badge, bc), link(ticket, ticketURL), clean(r.Repo), clean(r.Branch), since(r), prShort(r.GH)}
+		vals := []string{lipgloss.NewStyle().Foreground(sc).Render(icon), colored(badge, bc), r.Access(), r.SessionLocation(), clean(name), link(ticket, ticketURL), clean(r.Repo), clean(r.Branch), since(r), prShort(r.GH)}
 		line := format(vals)
 		if m.tableFocus && i == m.tableCursor {
 			line = lipgloss.NewStyle().Reverse(true).Render(line)

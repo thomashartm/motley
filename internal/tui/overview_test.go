@@ -161,7 +161,7 @@ func TestGroupedTableLinksAndMouseTargets(t *testing.T) {
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 180, Height: 45})
 	m = update(m, snap)
 	view := m.listView(m.listContentHeight(), m.listWidth())
-	for _, text := range []string{"TITLE", "TICKET", "CREW", "NEEDS YOU", "WORKING", "FX Banking", "Operations", "No crew", "CC", "●", "⚠", "https://github.com/owner/repo/issues/42", "https://tracker.example/tickets/71"} {
+	for _, text := range []string{"NAM", "TKT", "CRW", "NEEDS YOU", "WORKING", "FX Banking", "Operations", "No crew", "CC", "●", "⚠", "https://github.com/owner/repo/issues/42", "https://tracker.example/tickets/71"} {
 		if !strings.Contains(view, text) {
 			t.Fatal("missing table content", text)
 		}
@@ -187,7 +187,7 @@ func TestGroupedTableLinksAndMouseTargets(t *testing.T) {
 			}
 		}
 	}
-	for _, heading := range []string{"WORKING", "Operations", "TITLE"} {
+	for _, heading := range []string{"WORKING", "Operations", "NAM"} {
 		previous := m.selectedID()
 		m = click(m, 3, listScreenY(t, m, heading))
 		if m.selectedID() != previous {

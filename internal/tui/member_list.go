@@ -35,15 +35,15 @@ func cell(text string, width int) string {
 // Keep status and agent badges visible, with all three identity columns even
 // in a narrow panel. Extra space primarily goes to the title.
 func memberColumns(width int) (title, ticket, crew int) {
-	ticket = min(12, max(6, width/6))
-	crew = min(20, max(6, width/5))
-	title = max(1, width-9-ticket-crew)
+	ticket = min(12, max(3, width/7))
+	crew = min(20, max(3, width/6))
+	title = max(1, width-17-ticket-crew)
 	return
 }
 func (m Model) memberTableHeader(width int) string {
 	title, ticket, crew := memberColumns(width)
 	return lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("8")).Render(
-		cell("ST AG", 7) + cell("TITLE", title) + " " + cell("TICKET", ticket) + " " + cell("CREW", crew))
+		" ST AG ACC MOD " + cell("NAM", title) + " " + cell("TKT", ticket) + " " + cell("CRW", crew))
 }
 func selectionMarker(selected bool) string {
 	if selected {
@@ -57,12 +57,10 @@ func (m Model) memberTableRow(r member.Row, width int, selected bool) string {
 	icon, statusColor := statusIcon(r.CurrentStatus())
 	badge, badgeColor := palette.Badge(r.Agent)
 	prefix := colored(selectionMarker(selected), member.Color(r.Manifest, m.crews)) + lipgloss.NewStyle().Foreground(statusColor).Render(icon) + " " + colored(badge, badgeColor) + " "
+	prefix += cell(r.Access(), 3) + " " + cell(r.SessionLocation(), 3) + " "
 	name := r.Name
 	if name == "" {
 		name = r.ID
-	}
-	if location := r.SessionLocation(); location != "" {
-		name = "[" + location + "] " + name
 	}
 	label, target := ticketLink(r)
 	c := m.crewFor(r.Crew)

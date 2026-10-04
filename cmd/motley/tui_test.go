@@ -135,7 +135,7 @@ func TestOverviewAndMonitor(t *testing.T) {
 	})
 	overview.send(t, "g\x1b[C\x1b[C")
 	eventually(t, func() bool {
-		return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), "MEMBER")
+		return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), "NAM")
 	})
 	overview.send(t, "\r")
 	eventually(t, func() bool { return f.clientSession(overviewName) == id })

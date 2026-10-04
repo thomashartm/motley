@@ -32,8 +32,44 @@ func (m Manifest) ClaudeActivityPath(dir, sessionID string) string {
 }
 
 type ClaudeSessionStatus struct {
+	Managed                bool
 	ID, Name, Kind, Status string
 	Alive                  bool
+}
+
+func (s ClaudeSessionStatus) Access() string {
+	if !s.Alive {
+		return "—"
+	}
+	if s.Managed {
+		return "TMX"
+	}
+	return "EXT"
+}
+
+// Access describes terminal access, not ownership of a shared agent server.
+func (r Row) Access() string {
+	managed, external := false, false
+	for _, s := range r.ClaudeStatuses {
+		if s.Alive {
+			managed = managed || s.Managed
+			external = external || !s.Managed
+		}
+	}
+	switch {
+	case managed && external:
+		return "MIX"
+	case managed:
+		return "TMX"
+	case external:
+		return "EXT"
+	case !r.Alive:
+		return "—"
+	case r.External:
+		return "EXT"
+	default:
+		return "TMX"
+	}
 }
 
 func (s ClaudeSessionStatus) Location() string {
@@ -59,7 +95,7 @@ func (r Row) SessionLocation() string {
 	}
 	switch {
 	case fg && bg:
-		return "FG+BG"
+		return "F+B"
 	case fg:
 		return "FG"
 	case bg:
@@ -75,7 +111,7 @@ func (r *Row) refreshClaudeSessions(dir string, sessions []claude.Session) error
 	primaryAlive, primaryStatus, primarySince := r.Alive, r.Status, r.Since
 	r.Alive, r.Status, r.Since = false, "dead", 0
 	for _, id := range append([]string{r.ClaudeSession}, r.ClaudeSessions...) {
-		entry := ClaudeSessionStatus{ID: id, Status: "dead"}
+		entry := ClaudeSessionStatus{ID: id, Status: "dead", Managed: id == r.ClaudeSession && !r.External}
 		since := int64(0)
 		if id == r.ClaudeSession && primaryAlive {
 			entry.Alive, entry.Status = true, primaryStatus

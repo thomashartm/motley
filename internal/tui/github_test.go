@@ -215,7 +215,7 @@ func TestPRColumnAndDetail(t *testing.T) {
 	if table := ansi.Strip(m.crewTable(20, 100)); !strings.Contains(table, " PR") || !strings.Contains(table, "#7 draft ✗") {
 		t.Fatal(table)
 	}
-	if narrow := ansi.Strip(m.crewTable(20, 70)); strings.Contains(narrow, "#7 draft") || !strings.Contains(narrow, "SINCE") {
+	if narrow := ansi.Strip(m.crewTable(20, 70)); strings.Contains(narrow, "#7 draft") || !strings.Contains(narrow, "AGE") {
 		t.Fatal("PR column must drop first when narrow:\n" + narrow)
 	}
 }

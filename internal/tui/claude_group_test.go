@@ -14,19 +14,19 @@ func TestForegroundBackgroundDisplayAndPicker(t *testing.T) {
 	r.Agent, r.ClaudeSession, r.ClaudeSessions = "claude", "foreground", []string{"background"}
 	r.Status = "working"
 	r.ClaudeStatuses = []member.ClaudeSessionStatus{
-		{ID: "foreground", Name: "Terminal", Kind: "interactive", Status: "idle", Alive: true},
+		{ID: "foreground", Name: "Terminal", Kind: "interactive", Status: "idle", Alive: true, Managed: true},
 		{ID: "background", Name: "Implementation", Kind: "background", Status: "working", Alive: true},
 	}
 	m := update(newModel(true, true, "", nil), tea.WindowSizeMsg{Width: 140, Height: 40})
 	m = update(m, snapshot{rows: []member.Row{r}})
 	for _, width := range []int{30, 60, 100} {
 		line := ansi.Strip(m.memberTableRow(r, width, true))
-		if !strings.Contains(line, "[FG+BG]") || ansi.StringWidth(line) > width {
+		if !strings.Contains(line, "MIX F+B") || ansi.StringWidth(line) > width {
 			t.Fatal(width, line)
 		}
 	}
 	details := ansi.Strip(m.memberDetails())
-	for _, want := range []string{"Foreground", "idle", "Background", "working", "foreground", "background", "Open target"} {
+	for _, want := range []string{"Foreground", "idle", "Background", "working", "foreground", "background", "Open target", "TMX", "EXT", "MIX"} {
 		if !strings.Contains(details, want) {
 			t.Fatal("missing", want, details)
 		}

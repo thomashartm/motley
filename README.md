@@ -117,13 +117,29 @@ Imported Codex has no Terminate action. [Lifecycle details →](docs/advanced.md
 To monitor foreground and background Claude conversations together, select a
 member and use **Track another session (A)**, or run
 `mtly import <session-id> --with <member-id>` (`--list` shows candidates).
-The list shows **FG**, **BG**, or **FG+BG**; Details shows each conversation's
+The list shows **FG**, **BG**, or **F+B**; Details shows each conversation's
 status. A member remains working while either conversation or its subagents work.
 Open targets the primary conversation; **Switch tracked session (S)** changes
 that target while keeping linked conversations monitored. Terminate and Retire
 stop all explicitly tracked Claude conversations.
 
+The **ACC** column shows **TMX** for a Motley-managed tmux connection, **EXT**
+for an externally attached session, or **MIX** when a member tracks both.
+An external session may itself run in another tmux pane. **MOD** shows **FG**,
+**BG**, or **F+B** independently of access. Details explains each conversation;
+**AG** badges are grey for every agent.
+
+Drag over text in the Actions panel to select it, or drag across list rows to
+select complete rows. **Ctrl+C** copies the selection, including full member
+titles in copied rows; **Esc** clears it. Selected text is highlighted and
+**CPY** / **CLR** hints appear below the panels. Ordinary clicks still activate
+actions and links when released. Without a selection, Ctrl+C closes the TUI.
+
 ## Configuration
+
+Inside tmux, **Shift+Enter** inserts a line break in agents that support it;
+**Enter** submits. If both keys submit, see the
+[extended-key configuration](docs/troubleshooting.md#shiftenter-submits-instead-of-inserting-a-line-break).
 
 Motley creates `~/.motley/config.toml` on first launch. Edit the roots to suit your setup:
 

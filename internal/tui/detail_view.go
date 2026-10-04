@@ -72,6 +72,7 @@ func (m Model) memberDetails() string {
 	}
 	fields := []detailField{
 		{"Status", lipgloss.NewStyle().Foreground(sc).Render(icon+" "+status) + " · " + since(r)},
+		{"Access", accessDescription(r.Access())},
 		{"Ticket", link(ticket, ticketURL)},
 		{"Crew", m.crewLabel(r.Crew)},
 	}
@@ -85,7 +86,7 @@ func (m Model) memberDetails() string {
 		default:
 			label = "Session"
 		}
-		fields = append(fields, detailField{label, clean(s.Status + " · " + s.Name + " · " + s.ID)})
+		fields = append(fields, detailField{label, clean(s.Status + " · " + accessDescription(s.Access()) + " · " + s.Name + " · " + s.ID)})
 	}
 	if c := m.crewFor(r.Crew); c.Gig != "" {
 		fields = append(fields, detailField{"Gig", clean(c.Gig)})

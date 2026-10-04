@@ -116,7 +116,7 @@ func TestActionsHoverAndNonActionRows(t *testing.T) {
 			t.Fatalf("non-action row %d activated something: %q", i, line)
 		}
 	}
-	next, cmd = m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+	next, cmd = mouseClick(m, x, y)
 	if cmd == nil || next.(Model).retiring == nil {
 		t.Fatal("click did not open retirement checks")
 	}
@@ -198,6 +198,9 @@ func TestReviveRoutesNeverOpenRetirement(t *testing.T) {
 				msg = tea.MouseMsg{X: m.listWidth() + 4, Y: actionScreenY(t, m, "Revive member (r)"), Button: tea.MouseButtonLeft, Action: tea.MouseActionPress}
 			}
 			next, cmd := m.Update(msg)
+			if route == "mouse" {
+				next, cmd = next.Update(tea.MouseMsg{X: m.listWidth() + 4, Y: actionScreenY(t, m, "Revive member (r)"), Button: tea.MouseButtonLeft, Action: tea.MouseActionRelease})
+			}
 			got := next.(Model)
 			if cmd == nil || !got.busy || got.busyText != "Reviving…" || got.retiring != nil || got.terminating != nil {
 				t.Fatalf("%s did not dispatch Revive", route)

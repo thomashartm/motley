@@ -27,7 +27,7 @@ func TestCrewNavigationAndRefresh(t *testing.T) {
 	if m.group != "crew" || len(m.crewEntries()) != 2 || m.currentEntry().crew != "fx" || m.selectedID() != "" {
 		t.Fatalf("collapsed crews: %+v", m.crewEntries())
 	}
-	if !strings.Contains(m.crewTable(20, 73), "MEMBER") || !strings.Contains(m.crewTable(20, 73), "waiting") {
+	if !strings.Contains(m.crewTable(20, 73), "NAM") || !strings.Contains(m.crewTable(20, 73), "waiting") {
 		t.Fatal("missing member table")
 	}
 	if !strings.Contains(m.crewTable(20, 73), "Gig  Ship FX caching") {
@@ -128,7 +128,7 @@ func TestCrewViewsFitAndColumnsShrink(t *testing.T) {
 		branch, since bool
 	}{{35, false, false}, {60, true, false}, {80, true, true}} {
 		table := m.crewTable(10, c.width)
-		if strings.Contains(table, "BRANCH") != c.branch || strings.Contains(table, "SINCE") != c.since {
+		if strings.Contains(table, "BRN") != c.branch || strings.Contains(table, "AGE") != c.since {
 			t.Fatalf("columns at %d: %s", c.width, table)
 		}
 	}

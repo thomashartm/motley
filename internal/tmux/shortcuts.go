@@ -81,10 +81,10 @@ func navigationBindings() error {
 // disabled or unsupported by the terminal. Keep the user's bindings elsewhere.
 func clipboardBindings(command string) error {
 	guard := "#{||:#{@motley_member},#{@motley_monitor}}"
-	// Mouse-aware agents and the monitor otherwise consume drags themselves.
-	// Only take the drag: ordinary clicks and wheel events still reach the app.
+	// The monitor selects full rows and action text itself. Managed agent panes
+	// keep native copy-mode; explicit copy-mode in the monitor also keeps it.
 	if err := bindNavigation("root", "MouseDrag1Pane", guard,
-		"if-shell -F '#{pane_in_mode}' 'send-keys -M' 'copy-mode -M'"); err != nil {
+		"if-shell -F '#{||:#{pane_in_mode},#{&&:#{@motley_monitor},#{mouse_any_flag}}}' 'send-keys -M' 'copy-mode -M'"); err != nil {
 		return err
 	}
 	for _, table := range []string{"copy-mode", "copy-mode-vi"} {
