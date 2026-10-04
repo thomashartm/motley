@@ -88,7 +88,7 @@ func assertFooterFits(t *testing.T, m Model) {
 
 func TestFooterGroupsAndEssentialControls(t *testing.T) {
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 80, Height: 24})
-	for _, want := range []string{"Nav:", "Act:", "View:", "q quit", "s spawn", "g group", "x retire"} {
+	for _, want := range []string{"[List]", "[Actions]", "[View]", "[Run]", "q quit", "s spawn", "g group", "x retire"} {
 		if !strings.Contains(m.footer(), want) {
 			t.Fatalf("missing group/shortcut %q: %s", want, m.footer())
 		}
