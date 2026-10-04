@@ -12,6 +12,7 @@ type terminateDialog struct {
 	id       string
 	confirm  bool
 	external bool
+	grouped  bool
 }
 
 func (m Model) beginTerminate() (tea.Model, tea.Cmd) {
@@ -27,7 +28,7 @@ func (m Model) beginTerminate() (tea.Model, tea.Cmd) {
 		m.message = "This agent session is already stopped. Use Revive to restart it."
 		return m, nil
 	}
-	m.terminating = &terminateDialog{id: id, external: m.selectedRow().External}
+	m.terminating = &terminateDialog{id: id, external: m.selectedRow().External, grouped: len(m.selectedRow().ClaudeSessions) > 0}
 	m.message = ""
 	return m, nil
 }
@@ -67,6 +68,9 @@ func (m Model) terminateView(height int) string {
 	action := "Stops all processes in this agent session."
 	if m.terminating.external {
 		action = "Stops Claude in its original terminal."
+	}
+	if m.terminating.grouped {
+		action = "Stops all tracked foreground and background conversations."
 	}
 	text := "Terminate " + clean(m.terminating.id) + "?\n" + action + "\nKeeps worktree, branch and history. Use Revive to restart."
 	lines := strings.Split(ansi.Hardwrap(text, m.detailWidth(), true), "\n")

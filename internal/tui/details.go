@@ -58,7 +58,7 @@ func (c *detailCache) command(row member.Row, seq uint64, force bool) tea.Cmd {
 			}
 		}
 		result.event = c.event
-		if row.ClaudeSession != "" && result.event.AgentSessionID != row.ClaudeSession {
+		if row.ClaudeSession != "" && !row.TracksClaude(result.event.AgentSessionID) {
 			result.event = state.Event{}
 		}
 		key := fmt.Sprintf("%s:%d", row.ID, row.Since)

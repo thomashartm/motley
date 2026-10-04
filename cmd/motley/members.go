@@ -109,7 +109,7 @@ func listCommand() *cobra.Command {
 				return err
 			}
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-			if _, err := fmt.Fprintln(w, "ID\tTICKET\tREPO\tBRANCH\tAGENT\tSTATUS\tSTATE"); err != nil {
+			if _, err := fmt.Fprintln(w, "ID\tTICKET\tREPO\tBRANCH\tAGENT\tSTATUS\tSESSIONS\tSTATE"); err != nil {
 				return err
 			}
 			for _, row := range rows {
@@ -121,7 +121,7 @@ func listCommand() *cobra.Command {
 				if ticket == "" {
 					ticket = "—"
 				}
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", row.ID, ticket, row.Repo, row.Branch, row.Agent, row.CurrentStatus(), status); err != nil {
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", row.ID, ticket, row.Repo, row.Branch, row.Agent, row.CurrentStatus(), row.SessionLocation(), status); err != nil {
 					return err
 				}
 			}

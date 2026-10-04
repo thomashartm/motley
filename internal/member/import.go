@@ -39,7 +39,7 @@ func DiscoverClaude() ([]claude.Session, error) {
 		}
 		managed := false
 		for _, m := range members {
-			if m.Agent == "claude" && (m.ClaudeSession == s.SessionID || (m.ClaudeSession == "" && sameDirectory(m.Worktree, s.Cwd))) {
+			if m.Agent == "claude" && (m.TracksClaude(s.SessionID) || (m.ClaudeSession == "" && sameDirectory(m.Worktree, s.Cwd))) {
 				managed = true
 				break
 			}
@@ -155,21 +155,10 @@ func refreshClaude(rows []Row) ([]Row, error) {
 			continue
 		}
 		r.External = !r.Alive
-		for _, s := range sessions {
-			if s.SessionID == r.ClaudeSession && sameDirectory(s.Cwd, r.Worktree) {
-				r.Alive = s.PID > 0
-				status := s.MotleyStatus()
-				// Discovery has no transition timestamp; only matching hook
-				// evidence may provide an age for the live status.
-				activity, err := claude.ReadActivity(filepath.Join(dir, r.ID+".claude.json"))
-				if err != nil {
-					return rows, err
-				}
-				r.Status, r.Since = activity.Status(s.SessionID, status, s.StartedAt)
-				r.Seen = time.Now().Unix()
-				break
-			}
+		if err := r.refreshClaudeSessions(dir, sessions); err != nil {
+			return rows, err
 		}
+		r.Seen = time.Now().Unix()
 	}
 	return rows, nil
 }
@@ -189,7 +178,7 @@ func ImportedClaudeMember(sessionID, cwd string) (string, error) {
 		return "", err
 	}
 	for _, m := range members {
-		if m.ClaudeSession == sessionID && sameDirectory(m.Worktree, cwd) {
+		if m.TracksClaude(sessionID) && sameDirectory(m.Worktree, cwd) {
 			return m.ID, nil
 		}
 	}
@@ -283,6 +272,9 @@ func ExternalTerminal(id string) error {
 	if s == nil {
 		return fmt.Errorf("session stopped; use Revive to resume it in Motley")
 	}
+	if s.Kind == "background" {
+		return fmt.Errorf("%s runs in the background; open it with claude attach %s", m.Name, s.ID)
+	}
 	return fmt.Errorf("%s runs in its original terminal in %s; switch to it there, or Terminate and Revive to run it in Motley", m.Name, m.Worktree)
 }
 
@@ -313,7 +305,7 @@ func sameDirectory(a, b string) bool {
 }
 
 // ImportCandidate is the common CLI/TUI representation; control stays agent-specific.
-type ImportCandidate struct{ Agent, SessionID, Name, Cwd, Status, Socket string }
+type ImportCandidate struct{ Agent, SessionID, Name, Cwd, Status, Socket, Kind string }
 
 func DiscoverImports(agent string) ([]ImportCandidate, error) {
 	var candidates []ImportCandidate
@@ -324,7 +316,7 @@ func DiscoverImports(agent string) ([]ImportCandidate, error) {
 			return nil, err
 		}
 		for _, s := range sessions {
-			candidates = append(candidates, ImportCandidate{Agent: agent, SessionID: s.SessionID, Name: s.Name, Cwd: s.Cwd, Status: s.MotleyStatus()})
+			candidates = append(candidates, ImportCandidate{Agent: agent, SessionID: s.SessionID, Name: s.Name, Cwd: s.Cwd, Status: s.MotleyStatus(), Kind: s.Kind})
 		}
 	case "codex":
 		sessions, err := codex.Sessions("")
@@ -437,5 +429,20 @@ func stopImported(m Manifest) error {
 	if m.CodexSession != "" {
 		return nil
 	} // The shared thread survives removal of the terminal client.
-	return stopExternal(m)
+	// Validate all tracked identities before stopping the first conversation.
+	for _, id := range append([]string{m.ClaudeSession}, m.ClaudeSessions...) {
+		target := m
+		target.ClaudeSession = id
+		if _, err := externalSession(target); err != nil {
+			return err
+		}
+	}
+	for _, id := range append([]string{m.ClaudeSession}, m.ClaudeSessions...) {
+		target := m
+		target.ClaudeSession = id
+		if err := stopExternal(target); err != nil {
+			return err
+		}
+	}
+	return nil
 }

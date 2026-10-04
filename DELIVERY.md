@@ -1471,3 +1471,42 @@ and cover both crew and ordinary list navigation. Built in `bin/motley`
 PR publication requested by the user. Publishing `fix/consistent-footer-labels`
 against fetched `origin/main` at `ca3d2e3`. The validated source is unchanged;
 hosted CI remains separate from local validation.
+
+## Track foreground and background Claude conversations — 2026-10-04
+
+Repository rules checked: Git/gh CLI, delivery notes here. The reported IDD member
+tracked an idle foreground conversation while the visible work and its background
+subagent belonged to another conversation. Claude's discovery exposes them as
+separate sessions; sharing a checkout does not prove a parent/child relationship.
+
+At the user's request, explicitly link both conversations to one member. Added
+`mtly import <session-id> --with <member-id>` and **Track another session (A)**.
+The list identifies live conversations as FG, BG or FG+BG; Details shows each
+conversation's status, name and ID. Questions/permissions take priority, followed
+by working, so an idle foreground cannot hide active background work. Each
+conversation retains its own hook snapshot and child activity across foreground
+restarts. Unrelated sessions in the checkout do not contribute status.
+
+Open targets the primary conversation, shown in Details. Switching the primary
+keeps explicitly linked conversations monitored. Terminate/Retire confirmations
+state that they stop all tracked conversations; retirement archives their hook
+snapshots and keeps imported files. No running conversations are restarted by
+linking them.
+
+Validation: grouping/status/restart/permission, hook isolation, duplicate and
+wrong-checkout refusal, primary switching, two-process termination and snapshot
+archival tests passed. TUI display/picker tests, member/report/TUI race checks,
+vet, CI-pinned lint (0 issues), four-platform builds, installer/uninstaller tests
+and OpenCode plugin tests passed. Two full `go test ./...` attempts each had one
+different timing failure: Codex native hook reporting, then the tmux popup mouse
+test. Both passed twice on isolated reruns; no clean full-suite run is claimed.
+
+Installed the build in `~/.local/bin/motley` and explicitly linked IDD background
+conversation `fc950500…` alongside foreground `270a5f58…`. Reloaded only the Motley
+monitor; live CLI and monitor readback show **working / FG+BG**. Claude PIDs 32182
+and 80891 and their start times were unchanged. Binary and original manifest
+backup: `~/.motley/local-fix-backups/foreground-background-20261004T153043Z/`.
+PR publication requested by the user. Publishing
+`fix/track-foreground-background-sessions` against fetched `origin/main` at
+`ca92e91`. The base fast-forward changed no source files; the implementation and
+validation evidence above are unchanged. Hosted CI is pending publication.

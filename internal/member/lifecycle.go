@@ -205,8 +205,14 @@ func archive(dir string, m Manifest) error {
 	now := time.Now().UTC()
 	m.RetiredAt = &now
 	prefix := filepath.Join(dir, "archive", m.ID)
+	suffixes := []string{".events.jsonl", ".prompt.md", ".claude.json"}
+	for _, id := range append([]string{m.ClaudeSession}, m.ClaudeSessions...) {
+		if id != "" {
+			suffixes = append(suffixes, "."+id+".claude.json")
+		}
+	}
 	// Preserve earlier retirements when an id has been reused.
-	for _, suffix := range []string{".toml", ".events.jsonl", ".prompt.md", ".claude.json"} {
+	for _, suffix := range append([]string{".toml"}, suffixes...) {
 		if _, err := os.Lstat(prefix + suffix); err == nil {
 			prefix += "-" + now.Format("20060102T150405.000000000Z")
 			break
@@ -216,7 +222,7 @@ func archive(dir string, m Manifest) error {
 	}
 	// Copy atomically before removing any active files. A write failure leaves
 	// the active manifest and its data available for retry or manual recovery.
-	for _, suffix := range []string{".events.jsonl", ".prompt.md", ".claude.json"} {
+	for _, suffix := range suffixes {
 		data, err := os.ReadFile(filepath.Join(dir, m.ID+suffix))
 		if os.IsNotExist(err) {
 			continue
@@ -235,7 +241,7 @@ func archive(dir string, m Manifest) error {
 	if err := state.WriteAtomic(prefix+".toml", data); err != nil {
 		return err
 	}
-	for _, suffix := range []string{".events.jsonl", ".prompt.md", ".claude.json"} {
+	for _, suffix := range suffixes {
 		// Move the original inode too: a hook already holding the event file open
 		// can finish its append in the archive instead of an unlinked active log.
 		if err := os.Rename(filepath.Join(dir, m.ID+suffix), prefix+suffix); err != nil && !os.IsNotExist(err) {
@@ -266,6 +272,19 @@ func Terminate(id string) error {
 	}
 	if m.CodexSession != "" {
 		return fmt.Errorf("codex runs on a shared server; stop the turn in Codex, or Retire to remove only its Motley entry")
+	}
+	if len(m.ClaudeSessions) > 0 {
+		if _, err := inspectRetire(m, false); err != nil {
+			return err
+		}
+		if err := stopImported(m); err != nil {
+			return err
+		}
+		live, err := importedLive(m)
+		if err != nil || !live {
+			return err
+		}
+		return tmux.Kill(id)
 	}
 	if m.Imported() {
 		live, err := importedLive(m)

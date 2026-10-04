@@ -328,6 +328,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.beginSpawn()
 		case "S":
 			return m.beginSwitchSession()
+		case "A":
+			return m.beginTrackSession(true)
 		case "i":
 			return m.beginReply()
 		case "t":

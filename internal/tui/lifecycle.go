@@ -115,7 +115,7 @@ func (m Model) retireView(height int) string {
 	} else if d.check.Manifest.CodexSession != "" {
 		lines = append(lines, "Closes its Motley terminal and archives its Motley entry.", "Codex keeps its conversation and running work on the shared server.", "Keeps the checkout, files and all branches.", clean(d.check.Manifest.Worktree))
 	} else if d.check.Manifest.Imported() {
-		lines = append(lines, "Stops the imported agent and archives its Motley entry.", "Keeps the checkout, files and all branches.", clean(d.check.Manifest.Worktree))
+		lines = append(lines, "Stops all tracked conversations and archives its Motley entry.", "Keeps the checkout, files and all branches.", clean(d.check.Manifest.Worktree))
 	} else {
 		dirty := "no"
 		if d.check.Dirty {

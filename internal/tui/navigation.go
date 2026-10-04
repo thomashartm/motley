@@ -31,10 +31,14 @@ func (m Model) actions() []navigationAction {
 		} else if m.selectedRow().External {
 			openHelp = "Shows where the agent is running in its original terminal. Switch there yourself, or terminate and revive it to run it in Motley."
 		}
+		if len(m.selectedRow().ClaudeSessions) > 0 {
+			openHelp = "Opens the primary conversation shown in Details. Use Switch tracked session to choose another conversation; all linked conversations stay monitored."
+		}
 		add("Member", "Open agent (o)", "o", openHelp, false)
 		add("Member", "Edit member (e)", "e", "Opens an editor for the member's name, ticket, crew and colour. Changes apply when you save.", false)
 		if m.selectedRow().ClaudeSession != "" {
-			add("Member", "Switch tracked session (S)", "S", "Choose another live Claude session in this checkout. Keeps this member's name and crew. Both sessions continue running; the former terminal is released from Motley.", false)
+			add("Member", "Track another session (A)", "A", "Track another foreground or background Claude conversation alongside this member. Shows their combined status; both conversations keep running.", false)
+			add("Member", "Switch tracked session (S)", "S", "Choose the primary Claude conversation for Open. A single tracked session is replaced; linked conversations stay monitored. Keeps the name and crew, and releases the former terminal without stopping it.", false)
 		}
 		add("Member", "Open in browser (b)", "b", "Choose the branch, compare view, issue, PR or crew link to open in your browser. Only links that exist are offered.", false)
 		if onGitHub(m.selectedRow()) {
@@ -42,7 +46,11 @@ func (m Model) actions() []navigationAction {
 			add("Member", "Refresh GitHub (u)", "u", "Fetches this member's PR state and issue title with gh. Nothing refreshes automatically.", false)
 		}
 		if !m.selectedRow().External {
-			add("Member", "Reply (i)", "i", "Opens a reply field. Submitting sends your text and Enter to the running agent. Permission decisions must be made in the agent.", false)
+			replyLabel := "Reply (i)"
+			if len(m.selectedRow().ClaudeSessions) > 0 {
+				replyLabel = "Reply to primary (i)"
+			}
+			add("Member", replyLabel, "i", "Opens a reply field for the primary conversation in this member's terminal. Submitting sends your text and Enter there. Permission decisions must be made in the agent.", false)
 			add("Member", "Send to work tab (t)", "t", "Choose an attached work tab to display this member's running session there.", false)
 		}
 	}
@@ -63,12 +71,12 @@ func (m Model) actions() []navigationAction {
 		}
 		add("Session & cleanup", "Revive member (r)", "r", reviveHelp, false)
 		if m.selectedRow().CodexSession == "" {
-			add("Session & cleanup", "Terminate agent (d)", "d", "Asks for confirmation, then stops all processes in this member's session. Keeps its worktree, branch and history so you can revive it.", true)
+			add("Session & cleanup", "Terminate agent (d)", "d", "Asks for confirmation, then stops this member's agent and all explicitly linked foreground/background conversations. Keeps its worktree, branch and history.", true)
 		}
 		if m.selectedRow().CodexSession != "" {
 			add("Session & cleanup", "Retire member; keep files (x)", "x", "Closes its Motley terminal and archives the Motley entry. Keeps the Codex conversation and running work on the shared server, plus all files and branches.", false)
 		} else if m.selectedRow().ClaudeSession != "" {
-			add("Session & cleanup", "Retire member; keep files (x)", "x", "Asks for confirmation, then stops the agent and archives the member and history. Keeps the imported checkout, files and branches.", true)
+			add("Session & cleanup", "Retire member; keep files (x)", "x", "Asks for confirmation, then stops all tracked conversations and archives the member and history. Keeps the imported checkout, files and branches.", true)
 		} else {
 			add("Session & cleanup", "Retire member + worktree (x)", "x", "Removes the worktree and stops the session after cleanup checks and confirmation. Archives the member and history. Deletes the local branch unless kept or protected; remote branches stay. Force can discard uncommitted work and unpushed commits.", true)
 		}

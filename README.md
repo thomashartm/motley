@@ -114,6 +114,15 @@ Remote branches remain. Retired members cannot be revived.
 for imported Codex, it only closes Motley's client and removes the entry.
 Imported Codex has no Terminate action. [Lifecycle details →](docs/advanced.md#stop-resume-and-retire)
 
+To monitor foreground and background Claude conversations together, select a
+member and use **Track another session (A)**, or run
+`mtly import <session-id> --with <member-id>` (`--list` shows candidates).
+The list shows **FG**, **BG**, or **FG+BG**; Details shows each conversation's
+status. A member remains working while either conversation or its subagents work.
+Open targets the primary conversation; **Switch tracked session (S)** changes
+that target while keeping linked conversations monitored. Terminate and Retire
+stop all explicitly tracked Claude conversations.
+
 ## Configuration
 
 Motley creates `~/.motley/config.toml` on first launch. Edit the roots to suit your setup:

@@ -345,6 +345,9 @@ func (m Model) crewTable(height, width int) string {
 		if name == "" {
 			name = r.ID
 		}
+		if location := r.SessionLocation(); location != "" {
+			name = "[" + location + "] " + name
+		}
 		vals := []string{lipgloss.NewStyle().Foreground(sc).Render(icon), clean(name), colored(badge, bc), link(ticket, ticketURL), clean(r.Repo), clean(r.Branch), since(r), prShort(r.GH)}
 		line := format(vals)
 		if m.tableFocus && i == m.tableCursor {
