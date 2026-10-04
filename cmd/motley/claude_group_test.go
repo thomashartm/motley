@@ -42,12 +42,12 @@ func TestTrackForegroundAndBackground(t *testing.T) {
 	assertStatus := func(want string) {
 		t.Helper()
 		rows, err := member.List()
-		if err != nil || len(rows) != 1 || rows[0].CurrentStatus() != want || rows[0].SessionLocation() != "FG+BG" {
-			t.Fatalf("want %s FG+BG, got %+v: %v", want, rows, err)
+		if err != nil || len(rows) != 1 || rows[0].CurrentStatus() != want || rows[0].SessionLocation() != "F+B" {
+			t.Fatalf("want %s F+B, got %+v: %v", want, rows, err)
 		}
 	}
 	assertStatus("working")
-	if out := f.motley("ls"); !strings.Contains(out, "FG+BG") {
+	if out := f.motley("ls"); !strings.Contains(out, "F+B") {
 		t.Fatal(out)
 	}
 	f.tmux("new-session", "-d", "-s", id, "/bin/sh")

@@ -14,10 +14,10 @@ func TestClaudeGroupStatus(t *testing.T) {
 		name, foreground, background, want, location string
 		fgAlive, bgAlive                             bool
 	}{
-		{"background working", "idle", "busy", "working", "FG+BG", true, true},
-		{"foreground working", "busy", "idle", "working", "FG+BG", true, true},
-		{"both idle", "idle", "idle", "idle", "FG+BG", true, true},
-		{"background question", "busy", "waiting", "question", "FG+BG", true, true},
+		{"background working", "idle", "busy", "working", "F+B", true, true},
+		{"foreground working", "busy", "idle", "working", "F+B", true, true},
+		{"both idle", "idle", "idle", "idle", "F+B", true, true},
+		{"background question", "busy", "waiting", "question", "F+B", true, true},
 		{"foreground gone", "idle", "busy", "working", "BG", false, true},
 		{"background gone", "idle", "busy", "idle", "FG", true, false},
 		{"both gone", "busy", "busy", "dead", "", false, false},
@@ -38,6 +38,48 @@ func TestClaudeGroupStatus(t *testing.T) {
 				t.Fatalf("got %+v; want %s %s", r, tc.want, tc.location)
 			}
 		})
+	}
+}
+
+func TestSessionAccessIsIndependentOfExecutionMode(t *testing.T) {
+	for _, tc := range []struct {
+		name, want string
+		r          Row
+	}{
+		{"managed", "TMX", Row{Alive: true}},
+		{"external", "EXT", Row{Alive: true, External: true}},
+		{"stopped", "—", Row{External: true}},
+		{"shared Codex with managed client", "TMX", Row{Manifest: Manifest{Agent: "codex", CodexSession: "shared"}, Alive: true}},
+		{"mixed", "MIX", Row{ClaudeStatuses: []ClaudeSessionStatus{{Alive: true, Managed: true, Kind: "interactive"}, {Alive: true, Kind: "background"}}}},
+		{"external foreground and background", "EXT", Row{ClaudeStatuses: []ClaudeSessionStatus{{Alive: true, Kind: "interactive"}, {Alive: true, Kind: "background"}}}},
+		{"managed foreground ended", "EXT", Row{ClaudeStatuses: []ClaudeSessionStatus{{Managed: true, Kind: "interactive"}, {Alive: true, Kind: "background"}}}},
+		{"external background ended", "TMX", Row{ClaudeStatuses: []ClaudeSessionStatus{{Alive: true, Managed: true, Kind: "interactive"}, {Kind: "background"}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.r.Access(); got != tc.want {
+				t.Fatalf("access = %s, want %s", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestClaudeRefreshAccessFromManagedTerminal(t *testing.T) {
+	for _, external := range []bool{false, true} {
+		r := Row{Manifest: Manifest{ID: "member", ClaudeSession: "fg", ClaudeSessions: []string{"bg"}, Worktree: "/repo"}, Alive: !external, External: external}
+		sessions := []claude.Session{
+			{SessionID: "fg", PID: 1, Cwd: "/repo", Kind: "interactive", Status: "idle"},
+			{SessionID: "bg", PID: 2, Cwd: "/repo", Kind: "background", Status: "busy"},
+		}
+		if err := r.refreshClaudeSessions(t.TempDir(), sessions); err != nil {
+			t.Fatal(err)
+		}
+		want, primary := "MIX", "TMX"
+		if external {
+			want, primary = "EXT", "EXT"
+		}
+		if r.Access() != want || r.ClaudeStatuses[0].Access() != primary || r.ClaudeStatuses[1].Access() != "EXT" || r.CurrentStatus() != "working" || r.SessionLocation() != "F+B" {
+			t.Fatalf("wrong access or activity: %+v", r)
+		}
 	}
 }
 

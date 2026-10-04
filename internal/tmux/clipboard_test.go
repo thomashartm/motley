@@ -146,8 +146,11 @@ func TestClipboardMouseBindings(t *testing.T) {
 				// Enable application mouse reporting, as the monitor and agents do.
 				mouse, destination := "1", copied
 				fixture := "stty raw -echo; printf '\\033[2J\\033[HCLIPBOARD_FIXTURE\\033[?1000h\\033[?1006h'; exec cat > /dev/null"
-				if session == "other" {
-					mouse, destination = "0", fallback
+				if session == "other" || session == MonitorSession {
+					mouse = "0"
+					if session == "other" {
+						destination = fallback
+					}
 					call("set-option", "-t", session, "mouse", "on")
 					fixture = "stty raw -echo; printf '\\033[2J\\033[HCLIPBOARD_FIXTURE'; exec cat > /dev/null"
 				}

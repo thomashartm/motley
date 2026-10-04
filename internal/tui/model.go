@@ -35,6 +35,7 @@ type actionDone struct {
 }
 
 type Model struct {
+	selection           *textSelection
 	blueprints          *blueprintDialog
 	overview            bool
 	opening             *agentPicker
@@ -189,6 +190,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.updateDetail()
+		m.validateSelection()
 		cmd := m.requestDetail(id != m.selectedID())
 		var bell tea.Cmd
 		if ring {
@@ -204,6 +206,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.updateDetail()
 		}
 	case tea.WindowSizeMsg:
+		m.selection = nil
 		m.width, m.height = msg.Width, msg.Height
 		if m.blueprints != nil {
 			m.resizeBlueprints()
@@ -270,6 +273,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		key := msg.String()
+		if m.selection != nil {
+			if m.selection.active && key == "ctrl+c" {
+				return m.copySelection()
+			}
+			if key == "esc" {
+				m.selection = nil
+				return m, nil
+			}
+			m.selection = nil
+		}
 		if m.blueprints != nil {
 			return m.updateBlueprints(msg)
 		}
@@ -720,7 +733,7 @@ func (m Model) View() string {
 		message = m.query.View()
 	}
 	header += "  [" + m.groupName() + "]"
-	return fit(header, m.width) + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, detail) + "\n" + m.messageLine(message) + "\n" + m.footer()
+	return m.selectionView(fit(header, m.width) + "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, detail) + "\n" + m.messageLine(message) + "\n" + m.footer())
 }
 func (m Model) pickerView(height int) string {
 	labels := []string{"Automatic — most recently active work tab"}

@@ -1510,3 +1510,78 @@ PR publication requested by the user. Publishing
 `fix/track-foreground-background-sessions` against fetched `origin/main` at
 `ca92e91`. The base fast-forward changed no source files; the implementation and
 validation evidence above are unchanged. Hosted CI is pending publication.
+
+## Session access and text selection (#61) — 2026-10-04
+
+Repository rules checked: Git/gh CLI, progress recorded here. Created issue #61
+from the accepted proposal and started `feat/61-access-labels-copy-selection`
+on merged `origin/main` (`34e43fa`).
+
+Implemented independent ACC (TMX/EXT/MIX) and MOD (FG/BG/F+B)
+columns with labels at most three characters, per-conversation access in Details,
+Actions text selection and complete-row copying with full titles. Drag gestures
+in these areas do not dispatch actions or open links; ordinary clicks activate on release.
+Ctrl+C copies a selection; Esc clears it. The additional request makes all AG
+badges grey. Refreshes preserve selection by member identity and clear it when
+selected content disappears or changes; resizing and navigation clear it too.
+
+The macOS tmux monitor drag binding now forwards gestures to the TUI. Agent panes
+retain native copy-mode, and the monitor still supports explicit tmux scrollback.
+Clipboard copying uses the existing terminal/OSC 52 route and reports forwarding
+failures. README and clipboard documentation describe the interaction.
+
+Validation: `go test ./...` passed, including real tmux overview and monitor
+drag/copy tests that verify untruncated titles, terminal clipboard forwarding,
+and selecting Retire text without activating it. Selection tests cover reversed
+multirow drags, Unicode graphemes, refresh identity, resize, Esc, copy errors, and
+Ctrl+C behavior. Access/grouping and narrow layout checks passed. Member/TUI/tmux
+race checks, `go vet ./...`, CI-pinned golangci-lint (0 issues), local build,
+four-platform cross-build and diff checks passed. The initial new terminal test
+needed fixture mouse reporting enabled and a row-specific target to avoid hitting
+the Details access field; the corrected test passes in the full suite.
+
+Built in `bin/motley` (`bin/mtly`); not installed. Publishing a reviewable draft PR
+against fetched `origin/main` at `34e43fa`; hosted CI remains separate from local
+validation. No live member session was changed or restarted for this work.
+
+## Preserve Shift+Enter inside tmux agents — 2026-10-04
+
+Repository rules checked: Git/gh CLI; delivery evidence here. Kept this follow-up
+separate from the access/selection work (draft PR #62, hosted CI green).
+
+Live diagnosis: tmux 3.6a had extended-keys off, xterm output format, and the
+Ghostty client lacked the extkeys capability. A raw-byte terminal fixture
+reproduced Shift+Enter arriving as a carriage return. Enabling extended keys
+alone does not repair a running pane that missed negotiation at startup.
+
+Generated configuration now enables extended-key support and xterm-compatible
+terminal capability detection, selects CSI-u on tmux 3.5+, and forwards Shift+Enter
+literally in live Motley member sessions or foreground Codex/Claude/OpenCode
+panes. The binding preserves plain Enter and falls back to native handling in
+other sessions and after an agent has ended. Existing user files remain untouched
+by `mtly init`; upgrade instructions describe the small manual config addition.
+
+Validation: the full Go suite passed. A real tmux/PTY test reproduces the old
+failure and checks both Shift+Enter encodings, plain Enter, Ctrl+C, Tab, arrows,
+live-pane compatibility, capability discovery after reattachment, and native
+fallback outside active agents. The same test keeps the older-tmux config path
+loadable without requiring the newer CSI-u option. Vet, CI-pinned lint (0 issues),
+local build, four-platform cross-build and diff checks passed. The repository
+change is prepared as a separate draft PR against `origin/main` at `34e43fa`.
+
+Applied the same block to the user's existing Motley tmux config and live server.
+Backup: `~/.motley/local-fix-backups/shift-enter-20261004T161230Z/`. An attempted
+client reconnection left the terminal at the standalone Motley overview; no tmux
+client was attached on readback. Reopening an agent picks up terminal capabilities.
+All pane PIDs/terminals were unchanged, and the existing Codex and Claude processes
+were confirmed still running. No prompt or key was sent to a live agent.
+
+## Consolidated delivery — 2026-10-04
+
+At the user's request, combine the access/selection and Shift+Enter changes in
+PR #62 and publish it as ready for review. PR #64 will be closed as superseded.
+Both implementations are preserved; the only cherry-pick conflict was the two
+appended DELIVERY.md sections, which were retained. The combined full Go suite,
+vet, CI-pinned lint (0 issues), local build and four-platform builds passed.
+Publishing the combined PR as ready for review; hosted CI will run on the new
+head. The combined binary is built locally in `bin/motley`, not installed.

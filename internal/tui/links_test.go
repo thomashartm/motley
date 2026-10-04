@@ -66,7 +66,7 @@ func TestLinkClicksUseVisibleCellsAndRespectModals(t *testing.T) {
 				t.Fatal("non-click opened a link")
 			}
 		}
-		next, cmd := m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+		next, cmd := mouseClick(m, x, y)
 		if cmd == nil {
 			t.Fatal("click did not open link", size)
 		}
@@ -81,7 +81,7 @@ func TestLinkClicksUseVisibleCellsAndRespectModals(t *testing.T) {
 			t.Fatal("failure hidden")
 		}
 		m = update(m, key("e"))
-		_, cmd = m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+		_, cmd = mouseClick(m, x, y)
 		if cmd != nil {
 			t.Fatal("background link activated behind editor")
 		}

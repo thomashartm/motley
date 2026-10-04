@@ -18,7 +18,7 @@ func TestResolution(t *testing.T) {
 		}
 	}
 	label, c := Badge("claude")
-	if label != "CC" || c.Name != "orange" {
+	if label != "CC" || c.Name != "grey" {
 		t.Fatal(label, c)
 	}
 }
