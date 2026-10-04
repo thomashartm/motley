@@ -34,7 +34,8 @@ set -s extended-keys on
 if -F '#{>=:#{version},3.5}' 'set -s extended-keys-format csi-u'
 # Existing agent panes may have missed negotiation at startup. Forward this
 # one modified key literally there; leave shells and other applications alone.
-bind -n S-Enter if -F '#{||:#{&&:#{@motley_member},#{!=:#{@motley_status},ended}},#{m/r:^(codex|claude|opencode)$,#{pane_current_command}}}' 'send-keys -l "\033[13;2u"' 'send-keys S-Enter'
+# With no argument, send-keys forwards the bound key without a text fallback.
+bind -n S-Enter if -F '#{||:#{&&:#{@motley_member},#{!=:#{@motley_status},ended}},#{m/r:^(codex|claude|opencode)$,#{pane_current_command}}}' 'send-keys -l "\033[13;2u"' 'send-keys'
 `
 
 // Init scaffolds only missing files; existing user settings are never replaced.

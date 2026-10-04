@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/thomashartm/motley/internal/member"
 )
@@ -143,5 +144,52 @@ func TestRetireMouseChoices(t *testing.T) {
 	next, cmd = click(3)
 	if next.(Model).retiring != nil || cmd != nil {
 		t.Fatal("mouse cancel did not cancel")
+	}
+}
+
+func TestRetireLayoutWithLongCheckout(t *testing.T) {
+	path := "/Users/thomas/projects/aderis/infrastructure-stacks-feature-125-async-batching-infrastructure"
+	for _, size := range [][2]int{{60, 10}, {100, 25}, {200, 35}} {
+		for _, imported := range []bool{false, true} {
+			m := actionModel(size[0], size[1])
+			manifest := member.Manifest{ID: "infrastructure-stacks-feature-125", Worktree: path}
+			if imported {
+				manifest.ClaudeSession = "tracked"
+			}
+			m.retiring = &retireDialog{id: manifest.ID, loaded: true, check: member.RetireCheck{Manifest: manifest}}
+			view := ansi.Strip(m.retireView(m.contentHeight()))
+			if lipgloss.Width(m.View()) > m.width || lipgloss.Height(m.View()) > m.height {
+				t.Fatalf("retirement overflows at %v:\n%s", size, m.View())
+			}
+			lines := strings.Split(view, "\n")
+			first := len(lines) - len(m.retireChoices())
+			for i, label := range m.retireChoices() {
+				if lines[first+i] != fit("  "+control(label, i == 0), m.detailWidth()) {
+					t.Fatalf("control missing at %v: %s", size, view)
+				}
+			}
+			if size[0] == 200 && imported {
+				t.Logf("retirement confirmation:\n%s", view)
+				for _, want := range []string{"  Stops all tracked conversations", "\n  \n  Keeps the checkout", "\n  Dir\n  /Users/"} {
+					if !strings.Contains(view, want) {
+						t.Fatalf("missing spacing or path label %q:\n%s", want, view)
+					}
+				}
+				if !strings.Contains(strings.Join(strings.Fields(view), ""), path) {
+					t.Fatalf("long path lost:\n%s", view)
+				}
+				// The divider must not confirm retirement; Cancel must still work.
+				x := m.listWidth() + 5
+				y := 2 + first - 1 + m.panelHeadingGap()
+				next, cmd := m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+				if cmd != nil || next.(Model).busy {
+					t.Fatal("divider click retired a member")
+				}
+				next, cmd = m.Update(tea.MouseMsg{X: x, Y: y + 2, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+				if cmd != nil || next.(Model).retiring != nil {
+					t.Fatal("Cancel moved away from its mouse target")
+				}
+			}
+		}
 	}
 }

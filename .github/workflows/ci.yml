@@ -13,6 +13,7 @@ jobs:
   test:
     name: Test (${{ matrix.os }}, Go ${{ matrix.go }})
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         go: ["1.25.5"]
@@ -31,6 +32,7 @@ jobs:
       - name: Install tmux (macOS)
         if: runner.os == 'macOS'
         run: command -v tmux || brew install tmux
+      - run: tmux -V
       - run: go mod download
       - uses: actions/setup-node@v4
         with:
