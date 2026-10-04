@@ -70,6 +70,33 @@ retired members or deleted worktrees.
   where your existing gh login is stored.
 - Use `--no-gh` when spawning to skip issue lookup.
 
+## Shift+Enter submits instead of inserting a line break
+
+Ghostty sends a modified Enter key, but tmux can discard the Shift modifier.
+For tmux 3.5 or newer, add these lines to `~/.config/motley/motley.tmux.conf`
+(or the equivalent path under `XDG_CONFIG_HOME`):
+
+```tmux
+set -as terminal-features ",xterm*:extkeys"
+set -s extended-keys on
+set -s extended-keys-format csi-u
+bind -n S-Enter if -F '#{||:#{&&:#{@motley_member},#{!=:#{@motley_status},ended}},#{m/r:^(codex|claude|opencode)$,#{pane_current_command}}}' 'send-keys -l "\033[13;2u"' 'send-keys S-Enter'
+```
+
+Reload with `tmux source-file ~/.config/motley/motley.tmux.conf`, then detach and
+reattach the terminal once so tmux redetects Ghostty's capabilities. Agent panes
+keep running. This preserves Shift+Enter for agents such as Codex, including
+panes already running when the configuration is loaded. Plain Enter still
+submits. The binding preserves Shift+Enter in active Motley member sessions and
+panes whose foreground command is Codex, Claude or OpenCode, including agents
+that missed keyboard negotiation at startup. Shells left after an agent exits
+keep their normal key handling.
+Extended-key options apply to all sessions on the tmux server.
+
+New `mtly init` configurations include these settings with version guards.
+Existing user configuration files are preserved; `mtly init` does not rewrite
+them. Upgrade older tmux versions to 3.5+ for this configuration.
+
 ## Copying or mouse controls do not work
 
 1. Reattach the member or rerun `mtly monitor` after upgrading.
