@@ -25,6 +25,9 @@ func (m Model) importRows(height int) []importRow {
 	if d.replaceID != "" {
 		title = "Switch tracked session"
 	}
+	if d.additional {
+		title = "Track another session"
+	}
 	count := fmt.Sprintf("%d/%d", min(d.cursor+1, len(d.sessions)), len(d.sessions))
 	header := cell(title, max(1, width-len(count)-1)) + " " + count
 	rows := []importRow{{fit(header, width), -1}}
@@ -114,6 +117,10 @@ func importCard(s member.ImportCandidate, width, titleLines int, selected bool) 
 		label = "approval"
 	}
 	statusText := icon + " " + label
+	if s.Kind != "" {
+		location := (member.ClaudeSessionStatus{Kind: s.Kind}).Location()
+		statusText += " · " + location
+	}
 	idWidth := max(5, bodyWidth-ansi.StringWidth(statusText)-3)
 	id := clean(s.SessionID)
 	if ansi.StringWidth(id) > min(13, idWidth) {

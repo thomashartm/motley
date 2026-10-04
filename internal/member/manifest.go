@@ -17,8 +17,10 @@ import (
 type Manifest struct {
 	// Imported checkouts are borrowed: retirement never removes files or branches.
 	ClaudeSession string `toml:"claude_session,omitempty"`
-	CodexSession  string `toml:"codex_session,omitempty"`
-	CodexSocket   string `toml:"codex_socket,omitempty"`
+	// Additional explicitly linked conversations; ClaudeSession remains the Open target.
+	ClaudeSessions []string `toml:"claude_sessions,omitempty"`
+	CodexSession   string   `toml:"codex_session,omitempty"`
+	CodexSocket    string   `toml:"codex_socket,omitempty"`
 
 	Prompt    bool       `toml:"prompt,omitempty"`
 	Blueprint string     `toml:"blueprint,omitempty"`
@@ -94,6 +96,13 @@ func Load(dir, id string) (Manifest, error) {
 	if m.ClaudeSession != "" && (m.Agent != "claude" || CheckID(m.ClaudeSession) != nil) {
 		return Manifest{}, fmt.Errorf("invalid imported Claude session in %s", path)
 	}
+	seen := map[string]bool{m.ClaudeSession: true}
+	for _, id := range m.ClaudeSessions {
+		if m.ClaudeSession == "" || m.Agent != "claude" || CheckID(id) != nil || seen[id] {
+			return Manifest{}, fmt.Errorf("invalid additional Claude session in %s", path)
+		}
+		seen[id] = true
+	}
 	if m.CodexSession != "" || m.CodexSocket != "" {
 		if m.Agent != "codex" || CheckID(m.CodexSession) != nil || !filepath.IsAbs(m.CodexSocket) || strings.ContainsAny(m.CodexSocket, "\x00\r\n") || !filepath.IsAbs(m.Worktree) || len(m.AgentArgs) != 0 || m.ClaudeSession != "" {
 			return Manifest{}, fmt.Errorf("invalid imported Codex session in %s", path)
@@ -125,7 +134,8 @@ func loadAll(dir string) ([]Manifest, error) {
 }
 
 type Row struct {
-	External bool
+	ClaudeStatuses []ClaudeSessionStatus
+	External       bool
 	Manifest
 	Alive  bool
 	Status string

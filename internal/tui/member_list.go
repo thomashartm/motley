@@ -61,6 +61,9 @@ func (m Model) memberTableRow(r member.Row, width int, selected bool) string {
 	if name == "" {
 		name = r.ID
 	}
+	if location := r.SessionLocation(); location != "" {
+		name = "[" + location + "] " + name
+	}
 	label, target := ticketLink(r)
 	c := m.crewFor(r.Crew)
 	return prefix + cell(clean(name), title) + " " + link(cell(label, ticket), target) + " " + colored(cell(clean(c.Title), crew), palette.Resolve(c.ID, c.Color, ""))

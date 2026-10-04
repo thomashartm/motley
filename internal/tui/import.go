@@ -6,33 +6,46 @@ import (
 )
 
 type importDialog struct {
-	agent     string
-	replaceID string
-	sessions  []member.ImportCandidate
-	cursor    int
+	additional bool
+	agent      string
+	replaceID  string
+	sessions   []member.ImportCandidate
+	cursor     int
 }
 type importLoaded struct {
-	agent     string
-	replaceID string
-	sessions  []member.ImportCandidate
-	err       error
+	additional bool
+	agent      string
+	replaceID  string
+	sessions   []member.ImportCandidate
+	err        error
 }
 type importDone struct {
-	member   member.Manifest
-	err      error
-	replaced bool
+	additional bool
+	member     member.Manifest
+	err        error
+	replaced   bool
 }
 
 func (m Model) beginSwitchSession() (tea.Model, tea.Cmd) {
+	return m.beginTrackSession(false)
+}
+
+func (m Model) beginTrackSession(additional bool) (tea.Model, tea.Cmd) {
 	r := m.selectedRow()
 	if r.ClaudeSession == "" {
 		return m, nil
 	}
-	m.importing = &importDialog{agent: "claude", replaceID: r.ID}
-	m.busy, m.busyText = true, "Finding replacement sessions…"
+	m.importing = &importDialog{agent: "claude", replaceID: r.ID, additional: additional}
+	m.busy, m.busyText = true, "Finding sessions…"
 	return m, func() tea.Msg {
-		s, err := member.ReplacementSessions(r.ID)
-		return importLoaded{agent: "claude", replaceID: r.ID, sessions: s, err: err}
+		var s []member.ImportCandidate
+		var err error
+		if additional {
+			s, err = member.AdditionalSessions(r.ID)
+		} else {
+			s, err = member.ReplacementSessions(r.ID)
+		}
+		return importLoaded{agent: "claude", replaceID: r.ID, sessions: s, err: err, additional: additional}
 	}
 }
 
@@ -61,7 +74,7 @@ func (m Model) importMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = msg.err.Error()
 			return m, nil
 		}
-		m.importing = &importDialog{agent: msg.agent, replaceID: msg.replaceID, sessions: msg.sessions}
+		m.importing = &importDialog{agent: msg.agent, replaceID: msg.replaceID, sessions: msg.sessions, additional: msg.additional}
 	case importDone:
 		if msg.err != nil {
 			m.message = msg.err.Error()
@@ -74,6 +87,9 @@ func (m Model) importMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if msg.replaced {
 			m.message = "Now tracking " + msg.member.ClaudeSession + "; both sessions keep running."
+		}
+		if msg.additional {
+			m.message = "Tracking both conversations for " + msg.member.Name + "; both keep running."
 		}
 		m.focusID = msg.member.ID
 		m.group = "attention"
@@ -100,6 +116,13 @@ func (m Model) updateImport(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		id := d.sessions[d.cursor].SessionID
+		if d.additional {
+			m.busy, m.busyText = true, "Tracking another session…"
+			return m, func() tea.Msg {
+				member, err := member.AddClaudeSession(d.replaceID, id)
+				return importDone{member: member, err: err, additional: true}
+			}
+		}
 		if d.replaceID != "" {
 			m.busy, m.busyText = true, "Switching tracked session…"
 			return m, func() tea.Msg {

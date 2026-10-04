@@ -175,6 +175,19 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 	}
 	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
 	previous := tmux.HookState{}
+	var manifest member.Manifest
+	var manifestErr error
+	if agent == "claude" {
+		manifest, manifestErr = member.Load(dir, id)
+	}
+	if agent == "claude" && manifestErr == nil && manifest.ClaudeSession != "" {
+		if !manifest.TracksClaude(event.AgentSessionID) {
+			return nil
+		}
+		if event.AgentSessionID != manifest.ClaudeSession {
+			external = true
+		}
+	}
 	if !external {
 		previous, err = tmux.ReportStatus(ctx, id)
 		if err != nil {
@@ -187,11 +200,18 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 	var activity claude.Activity
 	activityPath := filepath.Join(dir, id+".claude.json")
 	if agent == "claude" {
-		// Once rebound, hooks from the former terminal must not update this entry.
-		if m, e := member.Load(dir, id); e == nil && m.ClaudeSession != "" && m.ClaudeSession != event.AgentSessionID {
-			return nil
+		// Explicitly linked conversations keep separate reducer snapshots.
+		if manifestErr == nil && manifest.ClaudeSession != "" {
+			activityPath = manifest.ClaudeActivityPath(dir, event.AgentSessionID)
 		}
 		activity, err = claude.ReadActivity(activityPath)
+		if err == nil && activity.SessionID == "" && manifest.ClaudeSession != "" {
+			legacy, readErr := claude.ReadActivity(filepath.Join(dir, id+".claude.json"))
+			err = readErr
+			if legacy.SessionID == event.AgentSessionID {
+				activity = legacy
+			}
+		}
 		if err != nil {
 			return err
 		}

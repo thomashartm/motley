@@ -75,6 +75,18 @@ func (m Model) memberDetails() string {
 		{"Ticket", link(ticket, ticketURL)},
 		{"Crew", m.crewLabel(r.Crew)},
 	}
+	for _, s := range r.ClaudeStatuses {
+		label := s.Location()
+		switch label {
+		case "FG":
+			label = "Foreground"
+		case "BG":
+			label = "Background"
+		default:
+			label = "Session"
+		}
+		fields = append(fields, detailField{label, clean(s.Status + " · " + s.Name + " · " + s.ID)})
+	}
 	if c := m.crewFor(r.Crew); c.Gig != "" {
 		fields = append(fields, detailField{"Gig", clean(c.Gig)})
 	}
@@ -104,6 +116,9 @@ func (m Model) memberDetails() string {
 			}
 		}
 		if text != "" {
+			if len(r.ClaudeSessions) > 0 {
+				text = "Conversation " + m.event.AgentSessionID + "\n" + text
+			}
 			body = fit(title, width) + "\n" + ansi.Wrap(multiline(text), width, "") + "\n\n" + panelDivider(width) + "\n\n" + detailFields(fields, width)
 		}
 	}
@@ -125,6 +140,9 @@ func (m Model) memberDetails() string {
 		session = append(session, detailField{"Codex ID", clean(r.CodexSession)}, detailField{"Checkout", "Imported; files and branches are kept on retirement."}, detailField{"Connection", "Shared Codex server; Open agent connects to the same conversation."})
 	} else if r.ClaudeSession != "" {
 		session = append(session, detailField{"Claude ID", clean(r.ClaudeSession)}, detailField{"Checkout", "Imported; files are kept on retirement."})
+		if len(r.ClaudeSessions) > 0 {
+			session = append(session, detailField{"Open target", "Primary conversation: " + clean(r.ClaudeSession) + ". Switch tracked session changes this target; linked conversations stay monitored."})
+		}
 		if r.External {
 			session = append(session, detailField{"Terminal", "Runs in its original terminal; Terminate and Revive to run it in Motley."})
 		}
