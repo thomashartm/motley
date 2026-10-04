@@ -83,7 +83,7 @@ func (m Model) footerExtra() string {
 	if !onGitHub(m.selectedRow()) {
 		return "b browser"
 	}
-	return "GitHub: b browser · P PR · u refresh"
+	return "[GitHub] b browser · P PR · u refresh"
 }
 
 func wrapFooter(groups []string, width int) []string {
@@ -113,16 +113,16 @@ func (m Model) footerGroups() (full, compact []string) {
 	if m.spawn != nil {
 		switch m.spawn.step {
 		case repoStep:
-			return []string{"[Spawn] Nav: ↑↓ select · type to filter", "Act: enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}
+			return []string{"[Spawn] ↑↓ select · type to filter", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}
 		case identityStep, varsStep:
 			if m.spawn.step == identityStep && m.spawn.field == 2 {
-				return []string{"[Spawn] Nav: ↑↓/tab field · ←→ branch type", "Act: enter next · esc cancel"}, []string{"[Spawn] ←→ branch type", "enter next · esc cancel"}
+				return []string{"[Spawn] ↑↓/tab field · ←→ branch type", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ←→ branch type", "enter next · esc cancel"}
 			}
-			return []string{"[Spawn] Nav: ↑↓/tab field · ←→ cursor", "Act: enter next · esc cancel"}, []string{"[Spawn] ↑↓ field", "enter next · esc cancel"}
+			return []string{"[Spawn] ↑↓/tab field · ←→ cursor", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ↑↓ field", "enter next · esc cancel"}
 		case agentStep, blueprintStep, modeStep:
-			return []string{"[Spawn] Nav: ↑↓/jk select", "Act: enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}
+			return []string{"[Spawn] ↑↓/jk select", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}
 		case previewStep:
-			return []string{"[Preview] Nav: ←→ action · ↑↓ scroll", "Act: enter choose · e edit · esc cancel"}, []string{"[Preview] ←→ action", "enter choose · esc cancel"}
+			return []string{"[Preview] ←→ action · ↑↓ scroll", "[Actions] enter choose · e edit · esc cancel"}, []string{"[Preview] ←→ action", "enter choose · esc cancel"}
 		default:
 			return []string{"[Spawn] Launching…"}, []string{"[Spawn] Launching…"}
 		}
@@ -134,63 +134,63 @@ func (m Model) footerGroups() (full, compact []string) {
 		return []string{"[Import] ↑↓ choose · enter add · esc cancel"}, []string{"[Import] ↑↓ choose · enter add · esc cancel"}
 	}
 	if m.searching {
-		return []string{"[Filter] Type to search", "Act: enter keep · esc clear"}, []string{"[Filter] type", "enter keep · esc clear"}
+		return []string{"[Filter] Type to search", "[Actions] enter keep · esc clear"}, []string{"[Filter] type", "enter keep · esc clear"}
 	}
 	if m.editor != nil {
 		if name := m.editor.selectorName(m.editor.focus); name != "" {
-			return []string{"[" + name + "] Nav: ←→ choose · ↑↓/tab field/action", "Act: enter next · ctrl+s save · esc cancel"}, []string{"[" + name + "] ←→ choose · ↑↓ field", "enter next · esc cancel"}
+			return []string{"[" + name + "] ←→ choose · ↑↓/tab field/action", "[Actions] enter next · ctrl+s save · esc cancel"}, []string{"[" + name + "] ←→ choose · ↑↓ field", "enter next · esc cancel"}
 		}
 		if m.editor.kind == "reply" {
-			return []string{"[Reply] Edit: ←→ cursor", "Act: enter send · esc cancel"}, []string{"[Reply] ←→ cursor", "enter send · esc cancel"}
+			return []string{"[Reply] ←→ cursor", "[Actions] enter send · esc cancel"}, []string{"[Reply] ←→ cursor", "enter send · esc cancel"}
 		}
 		if m.editor.kind == "delete" {
-			return []string{"[Delete] Nav: ↑↓ choice", "Act: enter toggle/confirm · esc cancel", "Shortcuts: f force · y delete"}, []string{"[Delete] ↑↓ choice", "enter choose · esc cancel"}
+			return []string{"[Delete] ↑↓ choice", "[Actions] enter toggle/confirm · esc cancel", "[Shortcuts] f force · y delete"}, []string{"[Delete] ↑↓ choice", "enter choose · esc cancel"}
 		}
-		return []string{"[Edit] Nav: ↑↓/tab field/action · ←→ cursor", "Act: enter next/choose · ctrl+s save · esc cancel"}, []string{"[Edit] ↑↓ field/action", "enter choose · esc cancel"}
+		return []string{"[Edit] ↑↓/tab field/action · ←→ cursor", "[Actions] enter next/choose · ctrl+s save · esc cancel"}, []string{"[Edit] ↑↓ field/action", "enter choose · esc cancel"}
 	}
 	if m.manager {
 		if m.managerActions {
-			return []string{"[Crews] Nav: ↑↓ action", "Act: enter choose · ←/esc back"}, []string{"[Crews] ↑↓ action", "enter choose · esc back"}
+			return []string{"[Crews] ↑↓ action", "[Actions] enter choose · ←/esc back"}, []string{"[Crews] ↑↓ action", "enter choose · esc back"}
 		}
-		return []string{"[Crews] Nav: ↑↓ crew · → actions", "Act: enter edit/add · esc back", "Shortcuts: a add · e edit · c colour · x delete"}, []string{"[Crews] ↑↓ crew · → actions", "enter edit · esc back"}
+		return []string{"[Crews] ↑↓ crew · → actions", "[Actions] enter edit/add · esc back", "[Shortcuts] a add · e edit · c colour · x delete"}, []string{"[Crews] ↑↓ crew · → actions", "enter edit · esc back"}
 	}
 	if m.retiring != nil && m.retiring.check.Manifest.Imported() {
 		return []string{"[Retire] ↑↓ choose · enter confirm · esc cancel"}, []string{"[Retire] ↑↓ choose · enter confirm · esc cancel"}
 	}
 	if m.retiring != nil {
-		return []string{"[Retire] Nav: ↑↓ choice", "Act: enter toggle/confirm · esc cancel", "Options: f force · k keep branch"}, []string{"[Retire] ↑↓ choice", "enter choose · esc cancel"}
+		return []string{"[Retire] ↑↓ choice", "[Actions] enter toggle/confirm · esc cancel", "[Options] f force · k keep branch"}, []string{"[Retire] ↑↓ choice", "enter choose · esc cancel"}
 	}
 	if m.menu != nil {
-		return []string{"[Menu] Nav: ↑↓/jk choose", "Act: enter run · esc cancel"}, []string{"[Menu] ↑↓ choose", "enter run · esc cancel"}
+		return []string{"[Menu] ↑↓/jk choose", "[Actions] enter run · esc cancel"}, []string{"[Menu] ↑↓ choose", "enter run · esc cancel"}
 	}
 	if m.picking {
 		action := "pin"
 		if m.pickMode == "send" {
 			action = "send"
 		}
-		return []string{"[Tabs] Nav: ↑↓/jk select", "Act: enter " + action + " · esc cancel"}, []string{"[Tabs] ↑↓ select", "enter " + action + " · esc cancel"}
+		return []string{"[Tabs] ↑↓/jk select", "[Actions] enter " + action + " · esc cancel"}, []string{"[Tabs] ↑↓ select", "enter " + action + " · esc cancel"}
 	}
 	if m.panel == actionsPanel {
-		return []string{"[Actions] Nav: ↑↓/jk choose", "Act: enter run · ←/esc details"}, []string{"[Actions] ↑↓ choose", "enter run · esc back"}
+		return []string{"[Actions] ↑↓/jk choose · enter run · ←/esc details"}, []string{"[Actions] ↑↓ choose", "enter run · esc back"}
 	}
 	if m.panel == detailPanel || m.tableFocus {
 		movement := "scroll"
 		if m.tableFocus {
 			movement = "member"
 		}
-		return []string{"[Details] Nav: ↑↓ " + movement + " · ← back · → actions", "Act: enter open · esc list"}, []string{"[Details] ← back · → actions", "↑↓ " + movement + " · enter open"}
+		return []string{"[Details] ↑↓ " + movement + " · ← back · → actions", "[Actions] enter open · esc list"}, []string{"[Details] ← back · → actions", "↑↓ " + movement + " · enter open"}
 	}
 	if m.overview {
 		return []string{"[Overview] ↓ members · enter/→ actions", "s spawn · a add · o open · m crews"}, []string{"[Overview] ↓ members · enter/→ actions · q close"}
 	}
 	quit := "q quit"
-	tabs := "Run: t tab"
+	tabs := "[Run] t tab"
 	if m.monitor {
 		quit = "q detach"
 		tabs += " · p pin"
 	}
 	if m.group == "crew" {
-		return []string{"[List] Nav: ↑↓ move · → expand/details · ← collapse", "View: tab members · h hidden · g group · m crews", quit}, []string{"[List] → expand/details · ← collapse", "↑↓ move · " + quit}
+		return []string{"[List] ↑↓ move · → expand/details · ← collapse", "[View] tab members · h hidden · g group · m crews", quit}, []string{"[List] → expand/details · ← collapse", "↑↓ move · " + quit}
 	}
-	return []string{"[List] Nav: ↑↓/jk · → details", "Act: enter open · s spawn · e edit · i reply", "View: / filter · g group · m crews", tabs + " · x retire · r revive · " + quit}, []string{"[List] ↑↓ move · → details", "enter open · " + quit}
+	return []string{"[List] ↑↓/jk · → details", "[Actions] enter open · s spawn · e edit · i reply", "[View] / find · g group · m crews", tabs + " · x retire · r revive · " + quit}, []string{"[List] ↑↓ move · → details", "enter open · " + quit}
 }

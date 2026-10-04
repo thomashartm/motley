@@ -26,19 +26,19 @@ func TestArrowEditorTerminal(t *testing.T) {
 	}
 	eventually(t, func() bool { return strings.Contains(terminal.text(), "Arrow fixture") })
 	send("\x1b[C", "[Details]")
-	send("\x1b[C", "[Actions]")
+	send("\x1b[C", "[Actions] ↑↓/jk choose")
 	send("\x1b[B\r", "Edit feat-arrows")
 	send(" changed\x1b[B\x1b[B\x1b[B\x1b[B", "> [ Save ]")
 	send("\r", "Saved")
 	eventually(t, func() bool { return f.manifest("feat-arrows").Name == "Arrow fixture changed" })
 	send("\r", "Edit feat-arrows")
 	send(" discarded\x1b[B\x1b[B\x1b[B\x1b[B\x1b[B", "> [ Cancel ]")
-	send("\r", "[Actions]")
+	send("\r", "[Actions] ↑↓/jk choose")
 	if f.manifest("feat-arrows").Name != "Arrow fixture changed" {
 		t.Fatal("cancel wrote changes")
 	}
 	send("\r", "Edit feat-arrows")
-	send(" discarded\x1b", "[Actions]")
+	send(" discarded\x1b", "[Actions] ↑↓/jk choose")
 	if f.manifest("feat-arrows").Name != "Arrow fixture changed" {
 		t.Fatal("escape wrote changes")
 	}

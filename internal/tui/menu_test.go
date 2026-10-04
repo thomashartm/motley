@@ -135,7 +135,7 @@ func TestBrowserMenuFooterAndAction(t *testing.T) {
 func TestBrowserHintOnlyWhenItFits(t *testing.T) {
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 80, Height: 24})
 	m = update(m, snapshot{rows: []member.Row{githubRow("alpha")}})
-	if f := m.footer(); strings.Contains(f, "b browser") || !strings.Contains(f, "Nav:") {
+	if f := m.footer(); strings.Contains(f, "b browser") || !strings.Contains(f, "[Actions] enter open") {
 		t.Fatalf("80 columns must keep the full footer without the optional hint:\n%s", f)
 	}
 }

@@ -155,7 +155,7 @@ func TestOverviewAndMonitor(t *testing.T) {
 	overview.send(t, "\x1b[<0;14;28M\x1b[<0;14;28m")
 	eventually(t, func() bool { return f.clientSession(overviewName) == "_motley" })
 	// Click each panel button through the tmux client (not directly into the model).
-	for _, test := range []struct{ button, hint string }{{"[1 List]", "[List] Nav:"}, {"[2 Details]", "[Details] Nav:"}, {"[3 Actions]", "[Actions] Nav:"}} {
+	for _, test := range []struct{ button, hint string }{{"[1 List]", "[List] ↑↓"}, {"[2 Details]", "[Details] ↑↓"}, {"[3 Actions]", "[Actions] ↑↓/jk choose"}} {
 		view := f.tmux("capture-pane", "-p", "-t", "=_motley:")
 		lines := strings.Split(view, "\n")
 		at := strings.Index(lines[len(lines)-1], test.button)
@@ -183,7 +183,7 @@ func TestOverviewAndMonitor(t *testing.T) {
 		view := f.tmux("capture-pane", "-p", "-t", "=_motley:")
 		return strings.Contains(view, "> Edit member (e)") && strings.Contains(view, "Opens an editor")
 	})
-	for _, test := range []struct{ key, hint string }{{"1", "[List] Nav:"}, {"2", "[Details] Nav:"}, {"3", "[Actions] Nav:"}} {
+	for _, test := range []struct{ key, hint string }{{"1", "[List] ↑↓"}, {"2", "[Details] ↑↓"}, {"3", "[Actions] ↑↓/jk choose"}} {
 		overview.send(t, test.key)
 		eventually(t, func() bool { return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), test.hint) })
 	}

@@ -1448,3 +1448,26 @@ Built locally in `bin/motley` (`bin/mtly`); not installed.
 PR publication requested by the user. Publishing `fix/existing-agent-picker`
 against current `origin/main` at `cb0ac5a`; the validated source is unchanged.
 Hosted CI is separate from the completed local checks above.
+
+## Consistent footer labels — PR delivery
+
+Repository rules checked: Git/gh CLI only; keep progress in DELIVERY.md. Scope:
+footer wording only. Use bracketed group labels throughout, including `[Actions]`,
+`[View]`, `[Run]`, `[GitHub]`, `[Shortcuts]` and `[Options]`, matching `[List]` and
+other context labels. Remove redundant Nav:/Edit: prefixes inside context groups.
+Update existing footer/terminal expectations and verify narrow layouts.
+
+Implemented bracketed labels in all full footer groups and removed the redundant
+inner prefixes. Combined the Actions-panel hints under one `[Actions]` label and
+shortened the list's search hint to `find` so all groups still fit at 80 columns.
+Compact hints and navigation buttons retain their existing keys and behavior.
+
+Validation: all TUI/layout tests, the terminal overview/monitor and arrow-editor
+checks, targeted vet, CI-pinned lint (0 issues), local build and diff checks passed.
+Terminal assertions distinguish panel context from the generic `[Actions]` group
+and cover both crew and ordinary list navigation. Built in `bin/motley`
+(`bin/mtly`); not installed.
+
+PR publication requested by the user. Publishing `fix/consistent-footer-labels`
+against fetched `origin/main` at `ca3d2e3`. The validated source is unchanged;
+hosted CI remains separate from local validation.
