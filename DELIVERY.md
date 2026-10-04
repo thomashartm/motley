@@ -1417,3 +1417,34 @@ separate from the completed local validation.
 
 Published [PR #57](https://github.com/thomashartm/motley/pull/57) against `main`.
 Implementation commit: `1ec36dc`. Hosted CI results are pending publication checks.
+
+## Existing-agent picker presentation — PR delivery
+
+Repository rules checked: Git/gh CLI only; delivery notes stay here. Scope is the
+existing-session picker shared by Claude/Codex import and tracked-session switching.
+Improve session hierarchy, spacing, selected styling and readable identity details;
+keep session discovery and import/lifecycle behavior unchanged. Started on
+`fix/existing-agent-picker` from current `origin/main` after PR #57 merged.
+
+Replaced the dense two-line session list with separated blocks: bold titles
+(wrapped to two lines where space permits), a muted working-directory line, and
+coloured status plus an abbreviated session ID. The selected block has a cyan
+accent and a light/dark-aware background; the header shows selection/total count.
+Home paths abbreviate to `~`, long paths preserve their meaningful suffix, and
+unnamed sessions have an explicit fallback title. Duplicate session names remain
+distinguishable by status and ID.
+
+Scrolling keeps whole session blocks visible, including at 60x10. Mouse targeting
+uses the rendered rows so title wrapping and gaps cannot select another session;
+headers/gaps are inert and the wheel moves selection without importing. The same
+presentation applies to replacement-session selection.
+
+Validation: all TUI tests and TUI race checks, real-terminal Claude/Codex import
+and tracked-Claude-session integration tests, vet, CI-pinned lint (0 issues), all
+four macOS/Linux builds and `git diff --check` passed. Layout coverage includes
+long/wide-character paths, duplicate names, scrolling, resizing and mouse targets.
+Built locally in `bin/motley` (`bin/mtly`); not installed.
+
+PR publication requested by the user. Publishing `fix/existing-agent-picker`
+against current `origin/main` at `cb0ac5a`; the validated source is unchanged.
+Hosted CI is separate from the completed local checks above.

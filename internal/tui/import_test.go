@@ -85,7 +85,7 @@ func TestCodexProviderAndImportMouse(t *testing.T) {
 		t.Fatal("Codex provider click missed")
 	}
 	m = update(m, importLoaded{agent: "codex", sessions: []member.ImportCandidate{{Agent: "codex", SessionID: "one", Name: "First", Cwd: "/repo"}, {Agent: "codex", SessionID: "two", Name: "Second", Cwd: "/other"}}})
-	next, cmd = m.Update(tea.MouseMsg{X: m.listWidth() + 4, Y: 5 + m.panelHeadingGap(), Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+	next, cmd = m.Update(tea.MouseMsg{X: m.listWidth() + 4, Y: 7 + m.panelHeadingGap(), Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
 	m = next.(Model)
 	if cmd == nil || !m.busy || m.importing.cursor != 1 {
 		t.Fatal("Codex session click missed")
