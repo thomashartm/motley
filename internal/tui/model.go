@@ -315,6 +315,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.copyMessage()
 		case "s":
 			return m.beginSpawn()
+		case "S":
+			return m.beginSwitchSession()
 		case "i":
 			return m.beginReply()
 		case "t":

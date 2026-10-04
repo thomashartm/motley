@@ -28,7 +28,7 @@ const timeout = 250 * time.Millisecond
 // and tmux calls, so a broken hook cannot hold up the agent indefinitely.
 func Run(args []string, stdin io.Reader) {
 	id := os.Getenv("MOTLEY_MEMBER")
-	if id == "" {
+	if id == "" && (len(args) != 2 || args[0] != "--agent" || args[1] != "claude") {
 		return
 	}
 	bounded(func(ctx context.Context) error { return handle(ctx, id, args, stdin) })
@@ -41,6 +41,11 @@ func Exited(id string) {
 	bounded(func(ctx context.Context) error {
 		if err := member.CheckID(id); err != nil {
 			return err
+		}
+		if pane := os.Getenv("TMUX_PANE"); pane != "" {
+			if err := tmux.ReportOrigin(ctx, id, pane); err != nil {
+				return err
+			}
 		}
 		return record(ctx, id, "", state.Event{Event: "AgentExit", Status: "ended", Summary: "Agent exited"})
 	})
@@ -69,8 +74,10 @@ func bounded(fn func(context.Context) error) {
 }
 
 func handle(ctx context.Context, id string, args []string, stdin io.Reader) error {
-	if err := member.CheckID(id); err != nil {
-		return err
+	if id != "" {
+		if err := member.CheckID(id); err != nil {
+			return err
+		}
 	}
 	flags := flag.NewFlagSet("report", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -103,7 +110,22 @@ func handle(ctx context.Context, id string, args []string, stdin io.Reader) erro
 	if readErr != nil {
 		parseErr = readErr
 	}
-	if err := record(ctx, id, *agent, event); err != nil {
+	external := id == ""
+	if external {
+		if parseErr != nil && event.Status == "" {
+			return parseErr
+		}
+		var identity struct {
+			Cwd string `json:"cwd"`
+		}
+		_ = json.Unmarshal(data, &identity)
+		var lookupErr error
+		id, lookupErr = member.ImportedClaudeMember(event.AgentSessionID, identity.Cwd)
+		if lookupErr != nil || id == "" {
+			return lookupErr
+		}
+	}
+	if err := recordTarget(ctx, id, *agent, event, external); err != nil {
 		return err
 	}
 	return parseErr
@@ -112,6 +134,10 @@ func handle(ctx context.Context, id string, args []string, stdin io.Reader) erro
 // record applies an event to the member's tmux status and appends it to the
 // event log while holding the log's lock.
 func record(ctx context.Context, id, agent string, event state.Event) error {
+	return recordTarget(ctx, id, agent, event, false)
+}
+
+func recordTarget(ctx context.Context, id, agent string, event state.Event, external bool) error {
 	dir, err := state.MembersDir()
 	if err != nil {
 		return err
@@ -148,17 +174,35 @@ func record(ctx context.Context, id, agent string, event state.Event) error {
 		}
 	}
 	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
-	previous, err := tmux.ReportStatus(ctx, id)
-	if err != nil {
-		return err
+	previous := tmux.HookState{}
+	if !external {
+		previous, err = tmux.ReportStatus(ctx, id)
+		if err != nil {
+			return err
+		}
 	}
 	event.TS = time.Now().UTC()
 	var prior state.Event
 	_ = json.Unmarshal([]byte(previous.Context), &prior)
+	var activity claude.Activity
+	activityPath := filepath.Join(dir, id+".claude.json")
+	if agent == "claude" {
+		// Once rebound, hooks from the former terminal must not update this entry.
+		if m, e := member.Load(dir, id); e == nil && m.ClaudeSession != "" && m.ClaudeSession != event.AgentSessionID {
+			return nil
+		}
+		activity, err = claude.ReadActivity(activityPath)
+		if err != nil {
+			return err
+		}
+		if external {
+			prior, previous.Status = activity.Current, activity.Current.Status
+		}
+	}
 	if event.Agent == "" {
 		event.Agent = previous.Agent
 	}
-	if agent == "claude" && event.Event == "Notification" && event.Status == "permission" && prior.AgentSessionID == event.AgentSessionID {
+	if agent == "claude" && event.Event == "Notification" && event.Status == "permission" && prior.AgentSessionID == event.AgentSessionID && prior.Detail["agent_id"] == event.Detail["agent_id"] {
 		if previous.Status == "question" {
 			event.Status = "question"
 		}
@@ -166,6 +210,24 @@ func record(ctx context.Context, id, agent string, event state.Event) error {
 			if _, exists := event.Detail[k]; !exists {
 				event.Detail[k] = v
 			}
+		}
+	}
+	if agent == "claude" && event.Status != "" {
+		// Bound text before persisting the reducer, just like event history.
+		encoded, err := state.EncodeEvent(event)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(encoded, &event); err != nil {
+			return err
+		}
+		event = activity.Apply(event)
+		data, err := json.Marshal(activity)
+		if err != nil {
+			return err
+		}
+		if err := state.WriteAtomic(activityPath, data); err != nil {
+			return err
 		}
 	}
 	changed := event.Status != "" && event.Status != previous.Status
@@ -177,8 +239,10 @@ func record(ctx context.Context, id, agent string, event state.Event) error {
 		}
 		contextText = strings.TrimSuffix(string(data), "\n")
 	}
-	if err := tmux.ReportUpdate(ctx, id, event.Status, contextText, changed, event.TS.Unix()); err != nil {
-		return err
+	if !external {
+		if err := tmux.ReportUpdate(ctx, id, event.Status, contextText, changed, event.TS.Unix()); err != nil {
+			return err
+		}
 	}
 	if event.Status == "" {
 		event.Status = previous.Status

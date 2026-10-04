@@ -115,7 +115,18 @@ type HookState struct {
 }
 
 func ReportStatus(ctx context.Context, id string) (HookState, error) {
-	out, err := exec.CommandContext(ctx, "tmux", "-u", "display-message", "-p", "-t", "="+SessionName(id)+":", "#{@motley_member}\t#{@motley_agent}\t#{@motley_status}\t#{@motley_context}").CombinedOutput()
+	return reportStatusAt(ctx, id, "="+SessionName(id)+":")
+}
+
+// ReportOrigin validates an exiting wrapper's own pane. Released terminals
+// retain their environment but must never end a replacement member session.
+func ReportOrigin(ctx context.Context, id, pane string) error {
+	_, err := reportStatusAt(ctx, id, pane)
+	return err
+}
+
+func reportStatusAt(ctx context.Context, id, target string) (HookState, error) {
+	out, err := exec.CommandContext(ctx, "tmux", "-u", "display-message", "-p", "-t", target, "#{@motley_member}\t#{@motley_agent}\t#{@motley_status}\t#{@motley_context}").CombinedOutput()
 	if err != nil {
 		return HookState{}, fmt.Errorf("tmux report lookup: %w: %s", err, strings.TrimSpace(string(out)))
 	}

@@ -11,6 +11,12 @@ import (
 )
 
 type payload struct {
+	AgentID         string `json:"agent_id"`
+	BackgroundTasks *[]struct {
+		ID     string `json:"id"`
+		Type   string `json:"type"`
+		Status string `json:"status"`
+	} `json:"background_tasks"`
 	Event            string          `json:"hook_event_name"`
 	SessionID        string          `json:"session_id"`
 	Prompt           string          `json:"prompt"`
@@ -31,9 +37,14 @@ func Parse(data []byte, eventName string) (state.Event, error) {
 		p.Event = eventName
 	}
 	e := state.Event{Agent: "claude", Event: p.Event, AgentSessionID: p.SessionID, Detail: map[string]string{}}
+	if p.AgentID != "" {
+		e.Detail["agent_id"] = p.AgentID
+	}
 	switch p.Event {
 	case "SessionStart":
 		e.Status = "idle"
+	case "SubagentStart", "SubagentStop":
+		e.Status = "working"
 	case "UserPromptSubmit":
 		e.Status = "working"
 		e.Summary = strings.SplitN(p.Prompt, "\n", 2)[0]
@@ -77,6 +88,9 @@ func Parse(data []byte, eventName string) (state.Event, error) {
 			}
 			e.Summary = strings.Join(lines, "\n")
 			e.Detail = map[string]string{"question": e.Summary}
+			if p.AgentID != "" {
+				e.Detail["agent_id"] = p.AgentID
+			}
 		}
 	case "Notification":
 		e.Summary = p.Message
@@ -108,6 +122,16 @@ func Parse(data []byte, eventName string) (state.Event, error) {
 		e.Status = "ended"
 	case "":
 		return e, fmt.Errorf("claude hook payload has no hook_event_name")
+	}
+	if (p.Event == "Stop" || p.Event == "SubagentStop") && p.BackgroundTasks != nil {
+		ids := []string{}
+		for _, task := range *p.BackgroundTasks {
+			if task.Type == "subagent" && task.Status == "running" && task.ID != "" {
+				ids = append(ids, task.ID)
+			}
+		}
+		data, _ := json.Marshal(ids)
+		e.Detail["active_agents"] = string(data)
 	}
 	return e, nil
 }

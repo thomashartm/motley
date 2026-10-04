@@ -77,6 +77,28 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "motley report --agent claude",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "motley report --agent claude",
+            "timeout": 1
+          }
+        ]
+      }
     ]
   }
 }

@@ -1235,3 +1235,53 @@ and TUI GitHub/navigation tests passed again after the rebase.
 The README shows a centered screenshot of the TUI (`motley-screen.png`, 900 px
 wide, linking to the full-size image) between the introduction and Install.
 Release archives include it alongside the logo so the packaged README renders.
+
+### Claude status sync and switching tracked sessions — 2026-10-04
+
+Repository checks: local Git CLI for repository work, gh for GitHub operations,
+and delivery evidence here.
+
+The reported VAT member tracked `f02922cf…` in a detached Motley tmux terminal,
+while the user's visible original terminal was running `abf42be6…` in the same
+checkout. Its tmux status had only the initial SessionStart/idle event. Imported
+Claude members now refresh from live discovery even when a tmux session exists;
+unknown transition ages no longer reuse the old tmux timestamp.
+
+Claude hooks now reach imported sessions in their original terminals by exact
+session ID and checkout. A locked activity snapshot separates parent and child
+states. SubagentStart/SubagentStop and Stop's background-task snapshot keep an
+idle parent working while children run; real permission requests and questions
+remain visible. Duplicate child events are idempotent, completed children are
+removed, and a new session resets activity. Activity state is archived with the
+member. No inactivity timeout is used to guess that subagents finished.
+
+Imported Claude members offer **Switch tracked session (Shift-S)**, with live
+status, session IDs and checkout paths. CLI: `mtly import --replace <member-id>
+--list`, then `mtly import <session-id> --replace <member-id>`. Selection is
+revalidated against live, unregistered sessions in the same checkout. Switching
+preserves member metadata and history and leaves both processes running. A
+former owned tmux session is renamed `untracked-…` and released; its late hooks
+and exit cannot overwrite the replacement. Detail views exclude the old
+conversation's last message. Codex switching is outside this change.
+
+Validation: full `go test ./...` passed; focused real-tmux reporting/rebinding
+and TUI tests passed, including stale idle, original-terminal subagent activity,
+wrong-checkout rejection, preserving the released pane, and late-exit isolation.
+Race checks, vet, CI-pinned golangci-lint (0 issues), four-platform cross-build,
+installer/uninstaller tests and OpenCode plugin tests passed. New subagent hook
+registrations require an existing Claude session to reload hooks or restart;
+existing tool hooks and live discovery already work with the updated binary.
+
+Local rollout: rebuilt `bin/motley` and installed it in `~/.local/bin/motley`.
+The previous binary and VAT manifest are backed up under
+`~/.motley/local-fix-backups/20261004T100256Z/`; the hook installer also backed up
+Claude settings before adding the two subagent hooks. Used the new replacement
+command to reconnect the existing VAT member to `abf42be6…`, preserving its name
+and `backend-vat-fixers` crew. Readback showed `working`, and a real PostToolUse
+hook at 10:03:14 UTC wrote the replacement session's working activity snapshot.
+Both original and detached Claude PIDs remained alive. Reopen Motley to load
+the new picker in an already-running TUI.
+
+PR preparation: `fix/claude-status-session-switch`, based on current `origin/main`
+at `6084440`. The user requested publication of the verified local changes;
+remote CI will be reported separately from the completed local checks.

@@ -155,3 +155,78 @@ func TestImportPickerTerminal(t *testing.T) {
 		t.Fatal("picker did not register running external session", rows, err)
 	}
 }
+
+func TestSwitchTrackedClaudeAndSubagentReporting(t *testing.T) {
+	f := newMemberFixture(t, buildLifecycleBinary(t), "main")
+	sid, process := fakeExternalClaude(t, f, f.repo)
+	f.motley("import", sid, "--name", "VAT work")
+	id := "claude-" + sid
+	// A detached old terminal must never freeze the imported member at idle.
+	f.tmux("new-session", "-d", "-s", id, "/bin/sh")
+	f.tmux("set-option", "-t", "="+id+":", "@motley_member", id)
+	f.tmux("set-option", "-t", "="+id+":", "@motley_status", "idle")
+	f.tmux("set-option", "-t", "="+id+":", "@motley_since", "1")
+	rows, err := member.List()
+	if err != nil || rows[0].CurrentStatus() != "working" || rows[0].Since != 0 {
+		t.Fatal(rows, err)
+	}
+	next := "22222222-2222-4222-8222-222222222222"
+	sessions := []claude.Session{
+		{SessionID: sid, PID: process.Process.Pid, Cwd: f.repo, Kind: "interactive", Status: "idle"},
+		{SessionID: next, PID: process.Process.Pid, Cwd: f.repo, Kind: "interactive", Status: "idle"},
+		{SessionID: "elsewhere", PID: process.Process.Pid, Cwd: f.home, Kind: "interactive", Status: "busy"},
+	}
+	data, _ := json.Marshal(sessions)
+	writeFixture(t, filepath.Join(f.home, "sessions.json"), string(data), 0600)
+	if out := f.motley("import", "--replace", id, "--list"); !strings.Contains(out, next) || strings.Contains(out, "elsewhere") {
+		t.Fatal(out)
+	}
+	f.refused("import", "elsewhere", "--replace", id)
+	oldPane := f.tmux("display-message", "-p", "-t", "="+id+":", "#{pane_id}")
+	f.motley("import", next, "--replace", id)
+	if err := process.Process.Signal(syscall.Signal(0)); err != nil {
+		t.Fatal("switch stopped agent", err)
+	}
+	if got := f.tmux("display-message", "-p", "-t", oldPane, "#{@motley_member}|#{session_name}"); !strings.HasPrefix(got, "|untracked-") {
+		t.Fatal("former terminal not preserved and released", got)
+	}
+	dir := filepath.Join(f.state, "motley/members")
+	saved, err := member.Load(dir, id)
+	if err != nil || saved.ClaudeSession != next || saved.Name != "VAT work" {
+		t.Fatal(saved, err)
+	}
+	// A late exit from the released pane must not end a subsequently created
+	// Motley terminal with the same member ID.
+	f.tmux("new-session", "-d", "-s", id, "/bin/sh")
+	f.tmux("set-option", "-t", "="+id+":", "@motley_member", id)
+	f.tmux("set-option", "-t", "="+id+":", "@motley_status", "working")
+	oldEnv := os.Getenv("TMUX_PANE")
+	t.Setenv("TMUX_PANE", oldPane)
+	f.motley("agent-exited", id)
+	t.Setenv("TMUX_PANE", oldEnv)
+	if got := f.tmux("show-options", "-v", "-t", "="+id+":", "@motley_status"); got != "working" {
+		t.Fatal("released pane ended replacement", got)
+	}
+	f.tmux("kill-session", "-t", "="+id+":")
+	// Original terminal has no MOTLEY_MEMBER and no tmux session; hooks must
+	// still reach exactly the selected session, including background children.
+	report := func(event, want string) {
+		t.Helper()
+		payload := fmt.Sprintf(`{"session_id":%q,"cwd":%q,%s}`, next, f.repo, event)
+		f.report("", payload)
+		rows, err := member.List()
+		if err != nil || len(rows) != 1 || !rows[0].External || rows[0].CurrentStatus() != want {
+			t.Fatal(rows, err)
+		}
+	}
+	// The discovery registry reports idle for the parent while a child runs.
+	// Hook evidence must augment it without requiring a live tmux terminal.
+	report(`"hook_event_name":"SubagentStart","agent_id":"reviewer"`, "working")
+	report(`"hook_event_name":"Stop","last_assistant_message":"Parent waiting"`, "working")
+	report(`"hook_event_name":"Notification","notification_type":"idle_prompt"`, "working")
+	// Late hooks from the former session cannot change the chosen entry.
+	f.report("", fmt.Sprintf(`{"session_id":%q,"cwd":%q,"hook_event_name":"Stop"}`, sid, f.repo))
+	report(`"hook_event_name":"SubagentStop","agent_id":"reviewer"`, "idle")
+	report(`"hook_event_name":"Stop","last_assistant_message":"Done"`, "ready")
+	f.refused("import", next, "--replace", id)
+}
