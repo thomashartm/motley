@@ -48,7 +48,7 @@ func TestInstallPreservesSettingsAndIsIdempotent(t *testing.T) {
 	if err := json.Unmarshal(root["hooks"], &hooks); err != nil {
 		t.Fatal(err)
 	}
-	if len(hooks) != 7 || len(hooks["Stop"]) != 2 || hooks["Stop"][0].Hooks[0].Command != "echo existing" || len(hooks["PreToolUse"]) != 2 {
+	if len(hooks) != 9 || len(hooks["Stop"]) != 2 || hooks["Stop"][0].Hooks[0].Command != "echo existing" || len(hooks["PreToolUse"]) != 2 {
 		t.Fatalf("hooks not merged: %s", installed)
 	}
 	for event, groups := range hooks {

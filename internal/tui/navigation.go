@@ -33,6 +33,9 @@ func (m Model) actions() []navigationAction {
 		}
 		add("Member", "Open agent (o)", "o", openHelp, false)
 		add("Member", "Edit member (e)", "e", "Opens an editor for the member's name, ticket, crew and colour. Changes apply when you save.", false)
+		if m.selectedRow().ClaudeSession != "" {
+			add("Member", "Switch tracked session (S)", "S", "Choose another live Claude session in this checkout. Keeps this member's name and crew. Both sessions continue running; the former terminal is released from Motley.", false)
+		}
 		add("Member", "Open in browser (b)", "b", "Choose the branch, compare view, issue, PR or crew link to open in your browser. Only links that exist are offered.", false)
 		if onGitHub(m.selectedRow()) {
 			add("Member", "Pull request (P)", "P", "Create a PR with gh pr create --fill, mark a draft ready for review, or open the PR. Offers follow the last refreshed PR state.", false)

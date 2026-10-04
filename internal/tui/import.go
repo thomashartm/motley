@@ -8,18 +8,34 @@ import (
 )
 
 type importDialog struct {
-	agent    string
-	sessions []member.ImportCandidate
-	cursor   int
+	agent     string
+	replaceID string
+	sessions  []member.ImportCandidate
+	cursor    int
 }
 type importLoaded struct {
-	agent    string
-	sessions []member.ImportCandidate
-	err      error
+	agent     string
+	replaceID string
+	sessions  []member.ImportCandidate
+	err       error
 }
 type importDone struct {
-	member member.Manifest
-	err    error
+	member   member.Manifest
+	err      error
+	replaced bool
+}
+
+func (m Model) beginSwitchSession() (tea.Model, tea.Cmd) {
+	r := m.selectedRow()
+	if r.ClaudeSession == "" {
+		return m, nil
+	}
+	m.importing = &importDialog{agent: "claude", replaceID: r.ID}
+	m.busy, m.busyText = true, "Finding replacement sessions…"
+	return m, func() tea.Msg {
+		s, err := member.ReplacementSessions(r.ID)
+		return importLoaded{agent: "claude", replaceID: r.ID, sessions: s, err: err}
+	}
 }
 
 func (m Model) beginImport() (tea.Model, tea.Cmd) {
@@ -47,7 +63,7 @@ func (m Model) importMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = msg.err.Error()
 			return m, nil
 		}
-		m.importing = &importDialog{agent: msg.agent, sessions: msg.sessions}
+		m.importing = &importDialog{agent: msg.agent, replaceID: msg.replaceID, sessions: msg.sessions}
 	case importDone:
 		if msg.err != nil {
 			m.message = msg.err.Error()
@@ -57,6 +73,9 @@ func (m Model) importMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.message = "Added " + msg.member.Name + "; Claude is still running in its original terminal."
 		if msg.member.CodexSession != "" {
 			m.message = "Added " + msg.member.Name + "; Open agent connects to its existing Codex conversation."
+		}
+		if msg.replaced {
+			m.message = "Now tracking " + msg.member.ClaudeSession + "; both sessions keep running."
 		}
 		m.focusID = msg.member.ID
 		m.group = "attention"
@@ -83,8 +102,18 @@ func (m Model) updateImport(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		id := d.sessions[d.cursor].SessionID
+		if d.replaceID != "" {
+			m.busy, m.busyText = true, "Switching tracked session…"
+			return m, func() tea.Msg {
+				member, err := member.SwitchClaudeSession(d.replaceID, id)
+				return importDone{member: member, err: err, replaced: true}
+			}
+		}
 		m.busy, m.busyText = true, "Adding "+d.agent+" session…"
-		return m, func() tea.Msg { member, err := member.Import(d.agent, id, "", ""); return importDone{member, err} }
+		return m, func() tea.Msg {
+			member, err := member.Import(d.agent, id, "", "")
+			return importDone{member: member, err: err}
+		}
 	}
 	return m, nil
 }
@@ -92,6 +121,9 @@ func (m Model) importStart(height int) int { return max(0, m.importing.cursor-ma
 func (m Model) importView(height int) string {
 	d := m.importing
 	lines := []string{"Add existing " + importAgentLabel(d.agent) + " — select to add"}
+	if d.replaceID != "" {
+		lines[0] = "Switch tracked session — both sessions keep running"
+	}
 	if len(d.sessions) == 0 {
 		lines = append(lines, "No unregistered "+d.agent+" sessions.")
 	}
@@ -103,7 +135,11 @@ func (m Model) importView(height int) string {
 		}
 		lines = append(lines, control(clean(name)+" · "+clean(s.Status), i == d.cursor))
 		if len(lines) < height {
-			lines = append(lines, "  "+clean(s.Cwd))
+			label := s.Cwd
+			if d.replaceID != "" {
+				label = s.SessionID + " · " + s.Cwd
+			}
+			lines = append(lines, "  "+clean(label))
 		}
 	}
 	for i := range lines {

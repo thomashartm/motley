@@ -133,7 +133,7 @@ func Import(agent, sessionID, name, crewID string) (Manifest, error) {
 func refreshClaude(rows []Row) ([]Row, error) {
 	needed := false
 	for _, r := range rows {
-		if r.ClaudeSession != "" && !r.Alive {
+		if r.ClaudeSession != "" {
 			needed = true
 			break
 		}
@@ -145,22 +145,55 @@ func refreshClaude(rows []Row) ([]Row, error) {
 	if err != nil {
 		return rows, err
 	}
+	dir, err := state.MembersDir()
+	if err != nil {
+		return rows, err
+	}
 	for i := range rows {
 		r := &rows[i]
-		if r.ClaudeSession == "" || r.Alive {
+		if r.ClaudeSession == "" {
 			continue
 		}
-		r.External = true
+		r.External = !r.Alive
 		for _, s := range sessions {
 			if s.SessionID == r.ClaudeSession && sameDirectory(s.Cwd, r.Worktree) {
 				r.Alive = s.PID > 0
-				r.Status = s.MotleyStatus()
+				status := s.MotleyStatus()
+				// Discovery has no transition timestamp; only matching hook
+				// evidence may provide an age for the live status.
+				activity, err := claude.ReadActivity(filepath.Join(dir, r.ID+".claude.json"))
+				if err != nil {
+					return rows, err
+				}
+				r.Status, r.Since = activity.Status(s.SessionID, status, s.StartedAt)
 				r.Seen = time.Now().Unix()
 				break
 			}
 		}
 	}
 	return rows, nil
+}
+
+// ImportedClaudeMember routes hooks from original terminals, which do not
+// inherit MOTLEY_MEMBER. Never associate sessions by directory alone.
+func ImportedClaudeMember(sessionID, cwd string) (string, error) {
+	if sessionID == "" || !filepath.IsAbs(cwd) {
+		return "", nil
+	}
+	dir, err := state.MembersDir()
+	if err != nil {
+		return "", err
+	}
+	members, err := loadAll(dir)
+	if err != nil {
+		return "", err
+	}
+	for _, m := range members {
+		if m.ClaudeSession == sessionID && sameDirectory(m.Worktree, cwd) {
+			return m.ID, nil
+		}
+	}
+	return "", nil
 }
 
 func externalSession(m Manifest) (*claude.Session, error) {

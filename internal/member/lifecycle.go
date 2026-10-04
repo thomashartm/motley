@@ -206,7 +206,7 @@ func archive(dir string, m Manifest) error {
 	m.RetiredAt = &now
 	prefix := filepath.Join(dir, "archive", m.ID)
 	// Preserve earlier retirements when an id has been reused.
-	for _, suffix := range []string{".toml", ".events.jsonl", ".prompt.md"} {
+	for _, suffix := range []string{".toml", ".events.jsonl", ".prompt.md", ".claude.json"} {
 		if _, err := os.Lstat(prefix + suffix); err == nil {
 			prefix += "-" + now.Format("20060102T150405.000000000Z")
 			break
@@ -216,7 +216,7 @@ func archive(dir string, m Manifest) error {
 	}
 	// Copy atomically before removing any active files. A write failure leaves
 	// the active manifest and its data available for retry or manual recovery.
-	for _, suffix := range []string{".events.jsonl", ".prompt.md"} {
+	for _, suffix := range []string{".events.jsonl", ".prompt.md", ".claude.json"} {
 		data, err := os.ReadFile(filepath.Join(dir, m.ID+suffix))
 		if os.IsNotExist(err) {
 			continue
@@ -235,7 +235,7 @@ func archive(dir string, m Manifest) error {
 	if err := state.WriteAtomic(prefix+".toml", data); err != nil {
 		return err
 	}
-	for _, suffix := range []string{".events.jsonl", ".prompt.md"} {
+	for _, suffix := range []string{".events.jsonl", ".prompt.md", ".claude.json"} {
 		// Move the original inode too: a hook already holding the event file open
 		// can finish its append in the archive instead of an unlinked active log.
 		if err := os.Rename(filepath.Join(dir, m.ID+suffix), prefix+suffix); err != nil && !os.IsNotExist(err) {

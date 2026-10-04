@@ -126,3 +126,48 @@ func TestImportedCodexActionsPreserveSharedWork(t *testing.T) {
 		t.Fatal("Codex cannot be opened from an external session")
 	}
 }
+
+func TestSwitchTrackedSessionPicker(t *testing.T) {
+	r := row("vat", true)
+	r.ClaudeSession = "old"
+	m := update(newModel(true, true, "", nil), tea.WindowSizeMsg{Width: 160, Height: 30})
+	m = update(m, snapshot{rows: []member.Row{r}})
+	offered := false
+	for _, a := range m.actions() {
+		if a.key == "S" {
+			offered = true
+		}
+	}
+	if !offered {
+		t.Fatal("switch action missing")
+	}
+	next, cmd := m.Update(key("S"))
+	m = next.(Model)
+	if cmd == nil || m.importing == nil || m.importing.replaceID != "vat" {
+		t.Fatal("switch discovery missing")
+	}
+	m = update(m, importLoaded{agent: "claude", replaceID: "vat", sessions: []member.ImportCandidate{
+		{SessionID: "session-one", Name: "Original", Cwd: "/repo", Status: "working"},
+		{SessionID: "session-two", Name: "Other", Cwd: "/repo", Status: "idle"},
+	}})
+	if view := m.View(); !strings.Contains(view, "Switch tracked session") || !strings.Contains(view, "session-one") {
+		t.Fatal(view)
+	}
+	m = update(m, tea.KeyMsg{Type: tea.KeyDown})
+	if m.importing.cursor != 1 {
+		t.Fatal("selection failed")
+	}
+	next, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil || !next.(Model).busy {
+		t.Fatal("switch not submitted")
+	}
+	m = update(next.(Model), importDone{member: member.Manifest{ID: "vat", Name: "VAT", ClaudeSession: "session-two"}, replaced: true})
+	if m.focusID != "vat" || m.importing != nil || !strings.Contains(m.message, "Now tracking session-two") {
+		t.Fatal("switch result missing")
+	}
+	m = update(m, importLoaded{agent: "claude", replaceID: "vat"})
+	m = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	if m.importing != nil {
+		t.Fatal("switch cancel failed")
+	}
+}

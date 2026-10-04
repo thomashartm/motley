@@ -102,7 +102,7 @@
       },
       "status": "ready",
       "summary": "motley fixture complete",
-      "detail": {}
+      "detail": {"active_agents": "[]"}
     },
     {
       "name": "SessionEnd",

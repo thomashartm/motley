@@ -187,6 +187,7 @@ only the buttons are shown while navigating the overview.
 | / | Filter members |
 | g | Group by attention, crew or repository |
 | e | Edit member details |
+| S | Switch the tracked session for an imported Claude member |
 | b | Open the branch, compare view, issue, PR or crew link in your browser |
 | P | Pull request: create, mark ready or open |
 | u / U | Refresh GitHub data for the selected member / all members |
@@ -361,6 +362,23 @@ Motley never controls: **Open agent** tells you where it runs. Switch to that ta
 and reply there. **Terminate** stops Claude; **Revive** resumes the saved conversation
 in Motley’s tmux session. **Retire** keeps imported directories and branches,
 even with Force.
+
+If an entry follows the wrong Claude terminal, select it and use **S** or
+**Actions → Switch tracked session**. Choose a live, unregistered session in the
+same checkout. The member keeps its name, crew and history; both sessions keep
+running. A former Motley terminal is renamed `untracked-…` and remains available
+through tmux. The CLI equivalent is:
+
+```sh
+mtly import --replace <member-id> --list
+mtly import <session-id> --replace <member-id>
+```
+
+Imported Claude status is polled even when a Motley terminal exists. Installed
+hooks also report from original terminals and keep the member working while
+subagents run. Explicit questions and permission requests still need attention.
+Run `mtly hooks install claude` after upgrading and restart Claude when convenient
+to load the added subagent events.
 
 **Codex** requires a running local shared app-server with its Unix-socket interface
 (verified with CLI 0.159.3 and daemon 0.160.0). Discovery reads loaded session

@@ -47,9 +47,12 @@ func hooksCommand() *cobra.Command {
 				return err
 			}
 		}
-		if args[0] == "codex" {
+		switch args[0] {
+		case "codex":
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), "Restart Codex, then use /hooks to review and trust the Motley hooks. Hook trust and approval policies are unchanged.")
-		} else {
+		case "claude":
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), "Restart Claude when convenient to load the new subagent hooks. Imported sessions also report from their original terminals.")
+		default:
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Restart existing %s sessions to load the hooks. Sessions outside motley are ignored.\n", args[0])
 		}
 		return err
