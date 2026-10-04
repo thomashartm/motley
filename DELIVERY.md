@@ -1285,3 +1285,94 @@ the new picker in an already-running TUI.
 PR preparation: `fix/claude-status-session-switch`, based on current `origin/main`
 at `6084440`. The user requested publication of the verified local changes;
 remote CI will be reported separately from the completed local checks.
+
+### README quick start and contribution guidance — 2026-10-04
+
+Implemented the approved shorter README structure, including the requested
+Contributing section. The README is roughly one-third its original 452 lines, with capabilities,
+numbered setup/start/import steps, action tables, lifecycle consequences, a small
+configuration example and development commands. Contributions cover bug reports,
+feature proposals, focused branches, behavior tests and PR validation notes.
+The introduction explains the user's motivation: one view across local terminal
+sessions to retain task context, see running work and focus attention where needed.
+
+Moved optional CLI, crew, GitHub, permission-mode, blueprint, terminal and lifecycle
+details to `docs/advanced.md`; recovery instructions are in
+`docs/troubleshooting.md`. Corrected configuration guidance against current
+source: the main config stays in `~/.motley/config.toml`, while XDG settings
+control blueprint/tmux and state roots. Hook instructions account for reporting
+from imported Claude sessions in their original terminals. Release archives now
+include `docs/*.md` so the new README links work in downloaded packages.
+
+Repository rules checked: Git/gh CLI only; progress recorded here. Changes are on
+`docs/simplify-readme`, based on `origin/main` at `c05e93e` after PR #55 merged.
+Validation: all 16 local documentation links and anchors, code-fence pairing,
+documented command/flag names against source and CLI help, archive file patterns,
+and `git diff --check` passed. No application code changed; runtime tests were
+not rerun. GoReleaser is not installed locally, so its validation command and a
+fresh release archive were not run. The docs are not yet committed or published.
+
+### Multiple repository entrypoints — 2026-10-04
+
+Repository rules checked: use local Git/gh; retain the pending README changes;
+record delivery here. Added `repos_roots = ["~/projects", "~/projects/aderis"]`.
+Each directory is scanned one level deep for main Git repositories. Both the
+spawn picker and CLI resolve across all roots; blueprint and issue lookup use
+the same selection. The existing `repos_root` remains supported, with the plural
+setting taking precedence. Loading never rewrites an existing configuration.
+
+Duplicate repository names are shown as absolute paths and require an explicit
+selection; repeated/symlinked physical repositories appear once. Linked worktrees
+remain excluded. Empty/blank root lists are rejected and unreadable entrypoints
+produce a path-specific error. Qualified selections retain the repository's
+basename in manifests, blueprint filters and worktree destinations. Existing
+worktree destination collision checks still apply to same-named repositories.
+
+Updated the default/example config, README, advanced usage and relevant source
+requirements. Added config compatibility/validation, discovery, picker and CLI
+integration coverage, including actual worktree creation and branch pushes to
+isolated fixture remotes from the second entrypoint.
+
+Validation: focused feature tests, race checks for config/member/TUI, `go vet`,
+CI-pinned golangci-lint (0 issues), installer/uninstaller/OpenCode plugin tests,
+four-platform cross-build, documentation paths/fences and `git diff --check`
+passed. Two full-suite attempts hit different integration failures: a tmux
+popup/link timeout, then a Codex hook status assertion. Both failing tests passed
+individually. A sequential-package full-suite run also failed, this time on an
+OpenCode hook status assertion and Codex import picker timeout. These failures
+are outside the modified paths, but no clean full-suite pass is claimed.
+The final focused rerun of both native reporting subtests and the Codex import
+picker passed (4.7 seconds).
+
+Local rollout: installed the verified build in `~/.local/bin/motley` (`mtly`
+remains its symlink) and changed only the repository setting in the user's
+`~/.motley/config.toml` to the two requested entrypoints. Binary and config backups
+are under `~/.motley/local-fix-backups/20261004T110329Z-repository-roots/`.
+`mtly config` lists both expanded paths; read-only blueprint discovery resolved
+`motley` from the first root and `backend` from the second. The installed binary
+matches the local build. Reopen an existing TUI to load the update.
+
+PR preparation: the user requested publication of the multi-entrypoint feature
+and pending README improvements. Repository rules rechecked; Git/gh CLI only.
+Publishing on `feature/motley-multiple-repository-roots`, based on fetched `origin/main`
+at `c05e93e`. The PR includes the shorter README, contribution guidance and
+advanced/troubleshooting pages. Local validation and intermittent full-suite
+failures are disclosed above; remote CI is separate evidence.
+
+Before publication, the user requested grouped repository presentation and
+shorter branch suggestions. Discovery now preserves configured root order and
+returns full selectors. The picker groups by root, renders `name (full path)`,
+wraps paths, and keeps selection tied to repositories while scrolling/filtering.
+The spawn form defaults to `feature/<repo>-<ticket>-<name>` and provides a
+`feature`/`fix` choice. Ticket is optional; pasted GitHub issue URLs contribute
+only their issue number. Manual branch edits survive task-name edits; explicitly
+changing branch type changes only the prefix of a manually edited branch.
+Added rendering/filter/scroll/selection and branch-form interaction regression
+tests, and updated usage docs to match.
+
+Final refinement validation: member/config/TUI tests and race checks, focused CLI
+spawn/config/blueprint integration tests, vet, lint (0 issues), cross-builds and
+documentation checks passed. Reinstalled the updated picker and branch form; the
+previous binary is backed up at `/Users/thomas/.motley/local-fix-backups/20261004T122602Z-spawn-picker/`.
+The earlier broad-suite failures remain disclosed; they were not treated as a
+clean full-suite pass.

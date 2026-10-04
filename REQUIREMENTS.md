@@ -105,7 +105,7 @@ Target example (W0 introduces only schema and the two roots):
 
 ```toml
 schema = 1
-repos_root = "~/projects"             # main repos; never modify their working tree
+repos_roots = ["~/projects", "~/projects/aderis"] # direct main-repo entrypoints
 worktrees_root = "~/worktrees"
 worktree_dir = "{repo}/{prefix}{branch_slug}" # relative to worktrees_root
 base_branch = "main"
@@ -239,7 +239,8 @@ and `SessionEnd`. Use the latest logged `agent_session_id` for revive.
 Resolve a requested base against local `refs/heads/<branch>`, then local `main`,
 then local `master`; otherwise error.
 
-1. Source is the main repo under `repos_root`. **Deviation:** wt uses the current
+1. Source is a main repo directly under any `repos_roots` entrypoint (legacy
+   `repos_root` remains supported). **Deviation:** wt uses the current
    checkout. Never modify the main repo's working tree.
 2. Target is `worktrees_root` plus rendered `worktree_dir`. `branch_slug` replaces
    `/` with `-`. **Deviation:** wt uses `<parent>/<repo>-<prefix>-<slug>`.
@@ -336,7 +337,8 @@ motley spawn --repo <r> [--ticket <t>] [--branch <b>] [--base <b>]
   [--var k=v]... [--existing] [--no-gh] [--switch|--attach|--detach]
 ```
 
-1. Resolve a git repo under `repos_root`, with fuzzy directory-name matching.
+1. Resolve a git repo directly under a `repos_roots` entrypoint, with fuzzy
+   directory-name matching in the picker. Duplicate names require a full path.
 2. Use `--branch` or render `branch_template` from ticket and the kebab-case name
    slug.
 3. Unless `--no-gh`, an issue-number ticket triggers title/body/URL lookup and a

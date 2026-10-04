@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thomashartm/motley/internal/config"
@@ -69,7 +70,12 @@ func newRootCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "motley %s\nrepos_root: %s\nworktrees_root: %s\n", version, cfg.ReposRoot, cfg.WorktreesRoot)
+			roots := cfg.RepositoryRoots()
+			repos := "repos_root: " + roots[0]
+			if len(roots) > 1 {
+				repos = "repos_roots:\n  - " + strings.Join(roots, "\n  - ")
+			}
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "motley %s\n%s\nworktrees_root: %s\n", version, repos, cfg.WorktreesRoot)
 			return err
 		},
 	})

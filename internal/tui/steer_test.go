@@ -89,7 +89,7 @@ func TestSpawnFormValidationAndPreview(t *testing.T) {
 	m = update(m, key("412"))
 	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
 	m = update(m, key("FX cache"))
-	if got := m.spawn.fields[2].Value(); got != "feat/412-fx-cache" {
+	if got := m.spawn.fields[3].Value(); got != "feature/billing-service-412-fx-cache" {
 		t.Fatal(got)
 	}
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
@@ -143,7 +143,7 @@ func TestSpawnViewsFit(t *testing.T) {
 	for _, size := range [][2]int{{60, 10}, {80, 24}, {140, 40}} {
 		for step := repoStep; step <= launchStep; step++ {
 			m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-			m.spawn = &spawnForm{step: step, opts: member.SpawnOptions{Agent: "claude"}, repos: []string{strings.Repeat("repo", 50)}, query: inputs("")[0], fields: inputs("412", strings.Repeat("界", 100), "feat/test"), vars: []string{"a", "b", "c"}, preview: viewport.New(30, 10), progress: strings.Repeat("long progress", 100), err: "an error\nsecond line"}
+			m.spawn = &spawnForm{step: step, opts: member.SpawnOptions{Agent: "claude"}, repos: []string{strings.Repeat("repo", 50)}, query: inputs("")[0], fields: inputs("412", strings.Repeat("界", 100), "feature", "feature/api-test"), vars: []string{"a", "b", "c", "d"}, preview: viewport.New(30, 10), progress: strings.Repeat("long progress", 100), err: "an error\nsecond line"}
 			m.spawn.preview.SetContent(strings.Repeat("prompt\n", 50))
 			view := m.View()
 			if lipgloss.Width(view) > size[0] || lipgloss.Height(view) > size[1] {

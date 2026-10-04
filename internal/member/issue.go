@@ -51,7 +51,7 @@ func LookupIssue(ctx context.Context, client *gh.Client, cfg config.Config, repo
 	if _, ok := IssueNumber(ticket); !ok {
 		return nil, nil
 	}
-	repo, err := ResolveRepo(cfg.ReposRoot, repoName)
+	repo, err := ResolveRepo(cfg.RepositoryRoots(), repoName)
 	if err != nil {
 		return nil, err
 	}
