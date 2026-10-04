@@ -4,18 +4,21 @@
   <img src="motley-logo.png" alt="Motley logo" width="240">
 </p>
 
-**Motley brings your all your local coding agents into a single view. **
+**Motley brings your all your local coding agents into a single view.**
 * See what each session is working on
 * see what’s running and know where your attention is
 needed
 * Keep track of countless terminals or terminal tabs easily or just spawn them inside motley
 
-Works with Claude Code, Codex and OpenCode on your local machine.
+**Works with Claude Code, Codex and OpenCode on your local machine.**
 
-- Start agents in separate Git worktrees.
+- Start agents in separate Git worktrees and motley manages the worktrees for you.
 - Add agents that are already running.
 - See which agents are working or need your input.
 - Group related agents into crews, link GitHub tickets and keep task context handy.
+- Associate agents to github issues.
+- Add descriptive infos to each motley session
+- spwan new agents with already prepared prompt blueprints
 
 An agent session is a **member**. A **crew** groups members. A **gig** describes the crew's work.
 Use `motley` or the shorter `mtly`.
