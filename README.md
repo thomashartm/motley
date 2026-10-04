@@ -1,4 +1,4 @@
-# motley
+# motley - the opinionated agent crew manager
 
 <p align="center">
   <img src="motley-logo.png" alt="Motley logo" width="240">
