@@ -88,7 +88,7 @@ func (m Model) actions() []navigationAction {
 			add("View", "Show/hide inactive crews (h)", "h", "Toggles whether inactive crews appear in the list.", false)
 		}
 		if m.monitor {
-			add("View", "Pin work tab (p)", "p", "Choose the work tab used when opening agents from the monitor. Automatic selection can be restored in the picker.", false)
+			add("View", "Where agents open (p)", "p", "Choose the tab Open agent uses, shown as \"opens in\" in the header. Automatic uses the most recently active work tab, or this monitor tab when none is attached; pinning keeps one tab. To add a work tab, open another terminal tab and run mtly attach <member-id>.", false)
 		}
 	} else {
 		add("Overview", "Main actions (Home)", "home", "Selects Overview for spawning and adding agents, managing crews, refreshing all GitHub data and changing the view.", false)

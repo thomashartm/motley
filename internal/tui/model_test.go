@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -140,6 +141,87 @@ func TestOpenClientUsesMonitorWithoutWorkTab(t *testing.T) {
 		next, cmd := m.Update(input)
 		if !next.(Model).busy || cmd == nil {
 			t.Fatal("open action did not switch single monitor tab")
+		}
+	}
+}
+
+func TestMonitorHeaderMatchesOpenAgent(t *testing.T) {
+	monitor := tmux.Client{Name: "monitor", Session: tmux.MonitorSession}
+	work := tmux.Client{Name: "work", Session: "agent"}
+	for _, tc := range []struct {
+		name    string
+		clients []tmux.Client
+		pinned  string
+		want    string
+	}{
+		{"single monitor tab", []tmux.Client{monitor}, "", "opens in: this tab (p)"},
+		{"automatic work tab", []tmux.Client{monitor, work}, "", "opens in: work (p)"},
+		{"pinned work tab", []tmux.Client{monitor, work}, "work", "opens in: work, pinned (p)"},
+		{"pinned tab gone", []tmux.Client{monitor}, "work", "opens in: pinned tab gone (p)"},
+		{"ambiguous monitor tabs", []tmux.Client{monitor, {Name: "second", Session: tmux.MonitorSession}}, "", "opens in: no tab (p)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := update(newModel(true, true, "", nil), tea.WindowSizeMsg{Width: 160, Height: 24})
+			m = update(m, snapshot{rows: []member.Row{row("a", true)}, clients: tc.clients})
+			m.pinned = tc.pinned
+			header := strings.SplitN(m.View(), "\n", 2)[0]
+			if !strings.Contains(header, tc.want) || !strings.Contains(header, "group: attention (g)") {
+				t.Fatalf("header %q, want %q", header, tc.want)
+			}
+		})
+	}
+	m := update(newModel(false, true, "client", nil), tea.WindowSizeMsg{Width: 160, Height: 24})
+	m = update(m, snapshot{rows: []member.Row{row("a", true)}})
+	m = update(m, key("g"))
+	if header := strings.SplitN(m.View(), "\n", 2)[0]; strings.Contains(header, "opens in") || !strings.Contains(header, "group: crew (g)") {
+		t.Fatalf("overview header %q", header)
+	}
+}
+
+func TestOpenAgentErrorsNameTheirFix(t *testing.T) {
+	monitor := tmux.Client{Name: "monitor", Session: tmux.MonitorSession}
+	if _, err := openClient([]tmux.Client{monitor}, "gone"); err == nil || !strings.Contains(err.Error(), "press p") {
+		t.Fatalf("lost pin error: %v", err)
+	}
+	if _, err := openClient([]tmux.Client{monitor, {Name: "second", Session: tmux.MonitorSession}}, ""); err == nil || !strings.Contains(err.Error(), "mtly attach") {
+		t.Fatalf("ambiguous monitor error: %v", err)
+	}
+}
+
+func TestPinPickerExplainsWorkTabs(t *testing.T) {
+	monitor := tmux.Client{Name: "monitor", Session: tmux.MonitorSession}
+	m := update(newModel(true, true, "", nil), tea.WindowSizeMsg{Width: 160, Height: 30})
+	m = update(m, snapshot{rows: []member.Row{row("a", true)}, clients: []tmux.Client{monitor}})
+	m = update(m, key("p"))
+	view := strings.Join(strings.Fields(m.pickerView(m.contentHeight())), " ")
+	for _, want := range []string{"Open agents in", "> Automatic", "or this tab when none is attached", "mtly attach <member-id>"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("picker missing %q:\n%s", want, view)
+		}
+	}
+	m = update(m, tea.KeyMsg{Type: tea.KeyEsc})
+	m = update(m, snapshot{rows: []member.Row{row("a", true)}, clients: []tmux.Client{monitor, {Name: "work", Session: "agent"}}})
+	m = update(m, key("p"))
+	if view := m.pickerView(m.contentHeight()); strings.Contains(view, "No work tab is attached") || !strings.Contains(view, "  work · agent") {
+		t.Fatalf("picker with a work tab:\n%s", view)
+	}
+}
+
+func TestPinPickerKeepsSelectionVisible(t *testing.T) {
+	m := update(newModel(true, true, "", nil), tea.WindowSizeMsg{Width: 120, Height: 24})
+	clients := []tmux.Client{{Name: "monitor", Session: tmux.MonitorSession}}
+	for i := 0; i < 30; i++ {
+		clients = append(clients, tmux.Client{Name: fmt.Sprintf("tab%02d", i), Session: "s", Activity: int64(100 - i)})
+	}
+	m = update(m, snapshot{rows: []member.Row{row("a", true)}, clients: clients})
+	m = update(m, key("p"))
+	for i := 0; i < 30; i++ {
+		m = update(m, key("j"))
+	}
+	for _, height := range []int{4, 8, m.contentHeight()} {
+		view := m.pickerView(height)
+		if lipgloss.Height(view) > height || !strings.Contains(view, "> tab29") {
+			t.Fatalf("height %d hides selection or overflows:\n%s", height, view)
 		}
 	}
 }

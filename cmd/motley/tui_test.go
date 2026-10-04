@@ -206,11 +206,13 @@ func TestOverviewAndMonitor(t *testing.T) {
 	// Pin the older client, then attach another work client. Enter must still
 	// switch the pinned one, and the second work tab must remain untouched.
 	overview.send(t, "p")
-	eventually(t, func() bool { return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), "Pin work tab") })
+	eventually(t, func() bool {
+		return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), "Open agents in")
+	})
 	overview.send(t, "j")
 	eventually(t, func() bool { return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), "> "+workName) })
 	overview.send(t, "\r")
-	eventually(t, func() bool { return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), "(pinned)") })
+	eventually(t, func() bool { return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=_motley:"), ", pinned (p)") })
 	f.tmux("switch-client", "-c", workName, "-t", "=fixture")
 	other := f.terminalClient("overview")
 	otherName := f.clientName(other)

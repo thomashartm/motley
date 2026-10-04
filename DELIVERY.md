@@ -1585,3 +1585,32 @@ appended DELIVERY.md sections, which were retained. The combined full Go suite,
 vet, CI-pinned lint (0 issues), local build and four-platform builds passed.
 Publishing the combined PR as ready for review; hosted CI will run on the new
 head. The combined binary is built locally in `bin/motley`, not installed.
+
+### Clear monitor header labels — 2026-10-04
+
+The monitor header said `Open agent: this tab` and `[attention]` without saying
+what they meant or which key changes them. It now shows `opens in: <target> (p)`
+and `group: <grouping> (g)`. The target comes from `openClient`, the function
+Open agent uses, so a lost pin or several monitor tabs no longer show "this tab"
+while Open agent refuses. The **p** picker is titled "Open agents in", explains
+Automatic and, with no work tab, says to run `mtly attach <member-id>` in another
+tab. Two errors named the wrong key (`T`, `t`); they now name **p** and the
+attach step. The help action is "Where agents open (p)".
+
+Validation: unit tests for every header state, both errors, the picker hint and
+picker scrolling at heights 4, 8 and full; the tmux pin test now checks
+`, pinned (p)`. vet and the full `go test ./...` passed. The first full run had
+one timing failure in `TestTmuxMouseTicketLinksAndPrefix` ("timed out waiting for
+fixture session"); it passed twice in isolation with and without this change, and
+the full `cmd/motley` package passed on rerun.
+
+## PR #63 conflict resolution — 2026-10-04
+
+Repository rules checked: Git/gh CLI and delivery notes here. Merged current
+`origin/main` (`b8ab54e`) into the monitor-header PR in an isolated worktree,
+preserving the original checkout and its untracked work. The rendering conflict
+keeps both `group: <name> (g)` and the selection overlay from PR #62. All delivery
+entries are retained. All TUI tests and the real-tmux overview/monitor, selection
+clipboard and message clipboard tests passed. `go vet ./...`, CI-pinned lint
+(0 issues), and diff checks passed. Pushing the merge resolution to the existing
+PR branch; hosted CI will run on the updated head.
