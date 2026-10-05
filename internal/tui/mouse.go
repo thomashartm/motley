@@ -47,6 +47,17 @@ func (m Model) mouseControls(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if m.terminating != nil && !m.busy && m.width >= 60 && m.height >= 10 && m.contentHeight() >= 4 && msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress && msg.X > m.listWidth()+2 && msg.X < m.width-1 {
+		lines := strings.Split(m.terminateView(m.contentHeight()), "\n")
+		index := m.panelContentY(msg.Y) - (len(lines) - 2)
+		if index == 0 {
+			return m.updateTerminate("esc")
+		}
+		if index == 1 {
+			return m.updateTerminate("y")
+		}
+		return m, nil
+	}
 	if m.retiring != nil && !m.busy && m.width >= 60 && m.height >= 10 && msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress && msg.X > m.listWidth()+2 && msg.X < m.width-1 {
 		lines := strings.Split(m.retireView(m.contentHeight()), "\n")
 		// Choices follow the wrapped explanation in the right panel.

@@ -10,8 +10,10 @@ import (
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
+	"github.com/thomashartm/motley/internal/gitx"
 	"github.com/thomashartm/motley/internal/state"
 	"github.com/thomashartm/motley/internal/tmux"
+	"github.com/thomashartm/motley/internal/worktree"
 )
 
 type Manifest struct {
@@ -67,6 +69,33 @@ type IssueRef struct {
 }
 
 func (m Manifest) Imported() bool { return m.ClaudeSession != "" || m.CodexSession != "" }
+
+func (m Manifest) CheckWorkspace(cwd string) error {
+	if !filepath.IsAbs(cwd) || !sameDirectory(m.Worktree, cwd) {
+		return fmt.Errorf("workspace mismatch: member %s expects %s, but the agent reports %s; stop this conversation and import it under its own workspace", m.ID, m.Worktree, cwd)
+	}
+	return nil
+}
+
+// CheckCheckout permits borrowed primary checkouts and non-Git imports, but
+// validates repository identity and feature branches for linked worktrees.
+func (m Manifest) CheckCheckout() error {
+	if m.RepoPath == "" {
+		return nil
+	}
+	top, err := gitx.Output(m.Worktree, "rev-parse", "--show-toplevel")
+	if err != nil {
+		return err
+	}
+	registered, err := worktree.Registered(m.RepoPath, top, m.Branch)
+	if err != nil {
+		return err
+	}
+	if !registered {
+		return fmt.Errorf("worktree for %s is missing or belongs to another repository", m.ID)
+	}
+	return nil
+}
 
 var validID = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
 

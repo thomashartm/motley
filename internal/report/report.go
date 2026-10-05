@@ -111,14 +111,29 @@ func handle(ctx context.Context, id string, args []string, stdin io.Reader) erro
 		parseErr = readErr
 	}
 	external := id == ""
+	var identity struct {
+		Cwd string `json:"cwd"`
+	}
+	_ = json.Unmarshal(data, &identity)
+	if !external && identity.Cwd != "" {
+		dir, err := state.MembersDir()
+		if err != nil {
+			return err
+		}
+		m, err := member.Load(dir, id)
+		if err != nil {
+			return err
+		}
+		if err := m.CheckWorkspace(identity.Cwd); err != nil {
+			// Surface the mismatch without retaining the foreign conversation ID
+			// as a candidate for a later resume.
+			return recordTarget(ctx, id, *agent, state.Event{Agent: *agent, Event: "WorkspaceMismatch", Status: "question", Summary: err.Error()}, false)
+		}
+	}
 	if external {
 		if parseErr != nil && event.Status == "" {
 			return parseErr
 		}
-		var identity struct {
-			Cwd string `json:"cwd"`
-		}
-		_ = json.Unmarshal(data, &identity)
 		var lookupErr error
 		id, lookupErr = member.ImportedClaudeMember(event.AgentSessionID, identity.Cwd)
 		if lookupErr != nil || id == "" {
@@ -180,7 +195,7 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 	if agent == "claude" {
 		manifest, manifestErr = member.Load(dir, id)
 	}
-	if agent == "claude" && manifestErr == nil && manifest.ClaudeSession != "" {
+	if agent == "claude" && manifestErr == nil && manifest.ClaudeSession != "" && event.Event != "WorkspaceMismatch" {
 		if !manifest.TracksClaude(event.AgentSessionID) {
 			return nil
 		}
@@ -199,7 +214,7 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 	_ = json.Unmarshal([]byte(previous.Context), &prior)
 	var activity claude.Activity
 	activityPath := filepath.Join(dir, id+".claude.json")
-	if agent == "claude" {
+	if agent == "claude" && event.Event != "WorkspaceMismatch" {
 		// Explicitly linked conversations keep separate reducer snapshots.
 		if manifestErr == nil && manifest.ClaudeSession != "" {
 			activityPath = manifest.ClaudeActivityPath(dir, event.AgentSessionID)
@@ -232,7 +247,7 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 			}
 		}
 	}
-	if agent == "claude" && event.Status != "" {
+	if agent == "claude" && event.Status != "" && event.Event != "WorkspaceMismatch" {
 		// Bound text before persisting the reducer, just like event history.
 		encoded, err := state.EncodeEvent(event)
 		if err != nil {

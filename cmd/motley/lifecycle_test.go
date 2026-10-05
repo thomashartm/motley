@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/thomashartm/motley/internal/member"
 )
@@ -207,7 +208,7 @@ func TestReviveMainCheckoutPreservesWork(t *testing.T) {
 
 func TestAdoptAndRetireSafeguards(t *testing.T) {
 	bin := buildLifecycleBinary(t)
-	t.Run("adopt linked worktree and protected branch", func(t *testing.T) {
+	t.Run("adopt requires a feature branch", func(t *testing.T) {
 		f := newMemberFixture(t, bin, "main")
 		path := filepath.Join(f.trees, "manual")
 		f.git(f.repo, "worktree", "add", "-b", "develop", path, "main")
@@ -218,12 +219,19 @@ func TestAdoptAndRetireSafeguards(t *testing.T) {
 		cmd := exec.Command(bin, "adopt", "--agent", "claude", "--ticket", "42", "--name", "Existing work")
 		cmd.Dir = path
 		out, err := cmd.CombinedOutput()
+		if err == nil || !strings.Contains(string(out), "feature branch") {
+			t.Fatalf("adopt protected branch: %v %s", err, out)
+		}
+		f.git(path, "switch", "-c", "feat/manual")
+		cmd = exec.Command(bin, "adopt", "--agent", "claude", "--ticket", "42", "--name", "Existing work")
+		cmd.Dir = path
+		out, err = cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("adopt: %v %s", err, out)
 		}
 		id := "42-existing-work"
 		m := f.manifest(id)
-		if m.Branch != "develop" || m.Agent != "claude" || m.Ticket != "42" {
+		if m.Branch != "feat/manual" || m.Agent != "claude" || m.Ticket != "42" {
 			t.Fatalf("adopted manifest: %+v", m)
 		}
 		if got := f.tmux("display-message", "-p", "-t", "="+id+":", "#{@motley_member}|#{@motley_agent}"); got != id+"|claude" {
@@ -350,7 +358,18 @@ func TestLifecycleTUI(t *testing.T) {
 	writeFixture(t, filepath.Join(m.Worktree, "dirty.txt"), "unfinished", 0600)
 	terminal.send(t, "d")
 	eventually(t, func() bool { return strings.Contains(screen(), "Terminate "+id+"?") })
-	terminal.send(t, "y")
+	clicked := false
+	for y, line := range strings.Split(screen(), "\n") {
+		if index := strings.Index(line, "Terminate (y)"); index >= 0 {
+			x := ansi.StringWidth(line[:index]) + 1
+			terminal.send(t, fmt.Sprintf("\x1b[<0;%d;%dM\x1b[<0;%d;%dm", x, y+1, x, y+1))
+			clicked = true
+			break
+		}
+	}
+	if !clicked {
+		t.Fatal("termination confirmation is not visible in the terminal")
+	}
 	eventually(t, func() bool {
 		return strings.Contains(screen(), "Terminated "+id) && strings.Contains(screen(), "0 alive")
 	})

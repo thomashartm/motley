@@ -74,5 +74,19 @@ func (m Model) terminateView(height int) string {
 	}
 	text := "Terminate " + clean(m.terminating.id) + "?\n" + action + "\nKeeps worktree, branch and history. Use Revive to restart."
 	lines := strings.Split(ansi.Hardwrap(text, m.detailWidth(), true), "\n")
+	// Keep the confirmation beside its explanation, even in small terminals.
+	if height >= 4 {
+		lines = lines[:min(len(lines), height-3)]
+		lines = append(lines, "")
+		lines = append(lines, m.terminateChoices()...)
+	}
 	return strings.Join(lines[:min(len(lines), height)], "\n")
+}
+
+func (m Model) terminateChoices() []string {
+	cancel, confirm := "> Cancel (esc)", "  Terminate (y)"
+	if m.terminating.confirm {
+		cancel, confirm = "  Cancel (esc)", "> Terminate (y)"
+	}
+	return []string{cancel, confirm}
 }

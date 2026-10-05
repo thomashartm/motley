@@ -99,6 +99,16 @@ func TestNativeAgentReporting(t *testing.T) {
 					t.Fatal(err)
 				}
 				for _, tc := range fixtures.Cases {
+					// Recorded absolute workspaces belong to the recording machine;
+					// replay them from this fixture's actual member checkout.
+					var payload map[string]json.RawMessage
+					if err := json.Unmarshal(tc.Payload, &payload); err != nil {
+						t.Fatal(err)
+					}
+					if _, ok := payload["cwd"]; ok {
+						payload["cwd"], _ = json.Marshal(f.manifest(id).Worktree)
+						tc.Payload, _ = json.Marshal(payload)
+					}
 					f.report(id, string(tc.Payload), "--agent", agent)
 					if tc.Status == "" {
 						continue

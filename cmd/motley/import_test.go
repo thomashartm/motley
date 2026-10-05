@@ -95,6 +95,9 @@ func TestImportClaudeLifecycle(t *testing.T) {
 				t.Fatal(err)
 			}
 			assertListState(t, f.motley("ls"), id, "dead")
+			// A stale notification from a different conversation cannot override
+			// the explicitly imported primary session on resume.
+			writeFixture(t, filepath.Join(f.state, "motley/members", id+".events.jsonl"), `{"agent":"claude","event":"Notification","agent_session_id":"foreign-session"}`+"\n", 0600)
 			f.motley("revive", id)
 			eventually(t, func() bool {
 				data, _ := os.ReadFile(filepath.Join(f.home, "resumed-args"))

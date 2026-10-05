@@ -187,7 +187,9 @@ func LatestSessionID(path, agent string) (string, error) {
 	id := ""
 	for scan.Scan() {
 		var e Event
-		if json.Unmarshal(scan.Bytes(), &e) == nil && e.Agent == agent && e.AgentSessionID != "" {
+		// Notifications can originate from Claude's conversation picker or a
+		// background agent. They are not proof of the foreground resume target.
+		if json.Unmarshal(scan.Bytes(), &e) == nil && e.Agent == agent && e.AgentSessionID != "" && e.Event != "Notification" && e.Detail["agent_id"] == "" {
 			id = e.AgentSessionID
 		}
 	}
