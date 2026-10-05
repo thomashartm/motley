@@ -53,8 +53,9 @@ Hook diagnostics are in `~/.local/state/motley/report.log`, or beneath your
 ## Open agent does not open my imported Claude terminal
 
 Imported Claude stays in its original terminal. Motley shows where it runs;
-switch to that terminal and reply there. To move it into Motley, use
-**Terminate**, then **Revive** when it is safe to stop the current work.
+switch to that terminal and reply there. To move it into Motley, stop the agent
+in its original terminal, then use **Revive**. **Terminate** stops the agent and
+archives its entry; it is removed from the active list and cannot be revived.
 
 ## Revive says the session already exists
 

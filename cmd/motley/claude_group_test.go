@@ -142,7 +142,7 @@ fi
 		}
 	}
 	rows, err := member.List()
-	if err != nil || len(rows) != 1 || rows[0].CurrentStatus() != "dead" {
+	if err != nil || len(rows) != 0 {
 		t.Fatal(rows, err)
 	}
 }

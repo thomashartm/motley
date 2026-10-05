@@ -1694,3 +1694,45 @@ Publication requested: publish `fix/session-workspace-cleanup` as a pull request
 against `main`. Refreshed origin before committing; the branch base is current
 at `6d6aabf`. Source is unchanged from the locally validated implementation.
 Hosted CI will run after publication; local verification is recorded above.
+
+## Terminate from the list and remove stopped entries — 2026-10-05
+
+Repository rules checked: Git/gh CLI, feature branches for linked worktrees and
+delivery notes here. PR #66 is merged. This follow-up uses
+`fix/terminate-list-action` from `origin/main` (`040e308`); only the primary
+`~/projects/motley` checkout is on main.
+
+Live diagnosis: `infrastructure-stacks-8d` was already stopped, with no owned tmux
+session. Terminate returned an already-stopped message and left it listed. The
+user confirmed the desired behavior: stop and remove from the active list,
+keeping files, branch and history.
+
+Terminate now stops tracked agents and archives their entries, including entries
+that have already stopped. Ownership and shared Codex protections remain; errors
+retain the active entry and stay in the confirmation dialog for retry. Successful
+termination removes the row immediately, even if unrelated discovery prevents
+the next refresh. Archived entries cannot be revived; usage guidance reflects
+that distinction.
+
+The bottom bar exposes a clickable `d Terminate` action directly beside Open
+agent. Rendering and hit testing share the same labels, including compact labels
+for smaller terminals. The confirmation explains what will be stopped and kept.
+
+Focused validation passed: real tmux mouse selection and confirmation, keyboard
+input, 60/80/120-column controls, stopped entries, imported foreground/background
+agents, archive-failure retry, dirty file/branch/worktree preservation and archived
+history contents. Full checks and local installation are recorded below.
+
+Local installation: binary matches `bin/motley`. Backup is
+`~/.motley/local-fix-backups/terminate-list-action-20261005T075524Z/motley`.
+Restarted only `_motley`; every other tmux pane and PID remained unchanged.
+Live readback shows `[d Terminate]` directly in the bottom bar. No live agents
+were stopped and no live member entries were removed during validation.
+
+Validation: the full command/integration package passed, then the full TUI suite
+passed after adapting an older narrow-footer test to `[q]`. A repeated full Go
+run passed all packages except an intermittent Codex import client-switch timeout;
+that unchanged test passed three consecutive focused retries. Termination tests
+passed in both full runs. Vet, CI-pinned lint (0 issues), installer/uninstaller,
+OpenCode plugin tests and all four platform builds passed. Publishing this
+follow-up separately because PR #66 is already merged.

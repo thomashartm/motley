@@ -99,16 +99,18 @@ Keep an overview in another terminal with `mtly monitor`.
 
 ## Stop, resume or remove
 
-Select a member, then press **3** to open its actions.
+Select a member and click **d Terminate** in the bottom bar, or press **d**.
+Press **3** for the other actions.
 
 | Action | Result |
 | --- | --- |
-| **Terminate (d)** | Stop the agent; keep its worktree, branch and history. |
+| **Terminate (d)** | Stop the tracked agent and remove its entry from the active list. Archive history; keep all files and branches. Also removes already-stopped entries. |
 | **Revive (r)** | Restart a stopped member in its existing worktree. |
 | **Retire (x)** | Archive the member; remove its managed worktree and usually its local branch. |
 
 Retirement refuses uncommitted or unpushed work. **Force discards that work.**
-Remote branches remain. Retired members cannot be revived.
+Remote branches remain. Terminated and retired entries are archived and cannot
+be revived. Revive applies to stopped entries still in the active list.
 
 **Imported sessions:** retirement keeps the checkout. It stops imported Claude;
 for imported Codex, it only closes Motley's client and removes the entry.

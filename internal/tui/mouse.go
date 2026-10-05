@@ -8,11 +8,33 @@ import (
 )
 
 func (m Model) navigationBar() string {
-	bar := "[o Open agent] · [1 List] · [2 Details] · [3 Actions] · [q Close]"
+	bar := strings.Join(m.navigationButtons(), " · ")
 	if ansi.StringWidth(bar) > m.width-2 {
 		return strings.ReplaceAll(bar, " · ", "·")
 	}
 	return bar
+}
+
+// Rendering and mouse hit testing use the same labels, including compact ones.
+func (m Model) navigationButtons() []string {
+	buttons := []string{"[o Open agent]"}
+	if m.selectedID() != "" && m.selectedRow().CodexSession == "" {
+		buttons = append(buttons, "[d Terminate]")
+	}
+	buttons = append(buttons, "[1 List]", "[2 Details]", "[3 Actions]", "[q Close]")
+	if ansi.StringWidth(strings.Join(buttons, "·")) > m.width-2 {
+		for i, button := range buttons {
+			switch button {
+			case "[o Open agent]":
+				buttons[i] = "[o Open]"
+			case "[2 Details]":
+				buttons[i] = "[2 Info]"
+			case "[q Close]":
+				buttons[i] = "[q]"
+			}
+		}
+	}
+	return buttons
 }
 
 func (m Model) navigationAvailable() bool {
@@ -135,22 +157,24 @@ func (m Model) mouseControls(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 	if msg.Y == m.height-1 {
 		bar := m.navigationBar()
-		for _, button := range []string{"[o Open agent]", "[1 List]", "[2 Details]", "[3 Actions]", "[q Close]"} {
+		for _, button := range m.navigationButtons() {
 			start := ansi.StringWidth(bar[:strings.Index(bar, button)])
 			if msg.X < start || msg.X >= start+len(button) {
 				continue
 			}
-			switch button {
-			case "[1 List]":
+			switch button[1] {
+			case '1':
 				m.panel, m.tableFocus = listPanel, false
-			case "[2 Details]":
+			case '2':
 				m.panel = detailPanel
 				m.tableFocus = !m.overview && m.group == "crew" && m.currentEntry().id == "" && len(m.members(m.currentEntry().crew)) > 0
-			case "[3 Actions]":
+			case '3':
 				m.panel, m.actionCursor, m.actionScroll = actionsPanel, 0, 0
-			case "[o Open agent]":
+			case 'o':
 				return m.jump()
-			case "[q Close]":
+			case 'd':
+				return m.beginTerminate()
+			case 'q':
 				return m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 			}
 			return m, nil

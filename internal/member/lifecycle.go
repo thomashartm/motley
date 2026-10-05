@@ -254,8 +254,8 @@ func archive(dir string, m Manifest) error {
 	return nil
 }
 
-// Terminate stops the owned tmux session or the imported Claude process. Files, branch and history remain
-// available for inspection or revival, including uncommitted work.
+// Terminate stops the tracked agent and archives its entry. The checkout and
+// branch are never removed, including uncommitted work. Failed stops stay listed.
 func Terminate(id string) error {
 	dir, err := state.MembersDir()
 	if err != nil {
@@ -273,36 +273,11 @@ func Terminate(id string) error {
 	if m.CodexSession != "" {
 		return fmt.Errorf("codex runs on a shared server; stop the turn in Codex, or Retire to remove only its Motley entry")
 	}
-	if len(m.ClaudeSessions) > 0 {
-		if _, err := inspectRetire(m, false); err != nil {
-			return err
-		}
-		if err := stopImported(m); err != nil {
-			return err
-		}
-		live, err := importedLive(m)
-		if err != nil || !live {
-			return err
-		}
-		return tmux.Kill(id)
-	}
-	if m.Imported() {
-		live, err := importedLive(m)
-		if err != nil {
-			return err
-		}
-		if !live {
-			return stopExternal(m)
-		}
-	}
 	// Termination needs only this terminal's ownership, not discovery of every
 	// unrelated imported agent (which may be unavailable or mismatched).
 	live, err := importedLive(m)
 	if err != nil {
 		return err
-	}
-	if !live {
-		return fmt.Errorf("member %s is already stopped", id)
 	}
 	if os.Getenv("TMUX") != "" && os.Getenv("TMUX_PANE") != "" {
 		session, err := tmux.CurrentSession()
@@ -313,7 +288,21 @@ func Terminate(id string) error {
 			return fmt.Errorf("open motley monitor to terminate %s; this overview is inside the target session", id)
 		}
 	}
-	return tmux.Kill(id)
+	// Check terminal ownership before signalling any linked external process.
+	if m.ClaudeSession != "" {
+		if err := stopImported(m); err != nil {
+			return err
+		}
+	}
+	if live {
+		if err := tmux.Kill(id); err != nil {
+			return err
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "archive"), 0700); err != nil {
+		return err
+	}
+	return archive(dir, m)
 }
 
 func Revive(id string) error {

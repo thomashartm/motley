@@ -79,7 +79,7 @@ func TestImportClaudeLifecycle(t *testing.T) {
 			f.refused("import", sid)
 			// Motley controls terminals only through tmux; it explains where the session runs.
 			for _, command := range []string{"attach", "switch"} {
-				if out := f.refused(command, id); !strings.Contains(out, "runs in its original terminal in ") || !strings.Contains(out, "Terminate and Revive") {
+				if out := f.refused(command, id); !strings.Contains(out, "runs in its original terminal in ") || !strings.Contains(out, "stop it there and use Revive") {
 					t.Fatal(command, out)
 				}
 			}
@@ -91,9 +91,11 @@ func TestImportClaudeLifecycle(t *testing.T) {
 			if out := f.refused("revive", id); !strings.Contains(out, "still running") {
 				t.Fatal(out)
 			}
-			if err := member.Terminate(id); err != nil {
+			// Stopping in the original terminal keeps the active entry for Revive.
+			if err := process.Process.Signal(syscall.SIGTERM); err != nil {
 				t.Fatal(err)
 			}
+			eventually(t, func() bool { return process.Process.Signal(syscall.Signal(0)) != nil })
 			assertListState(t, f.motley("ls"), id, "dead")
 			// A stale notification from a different conversation cannot override
 			// the explicitly imported primary session on resume.
@@ -104,7 +106,12 @@ func TestImportClaudeLifecycle(t *testing.T) {
 				return string(data) == "--resume="+sid+"\n"
 			})
 			assertListState(t, f.motley("ls"), id, "alive")
-			f.motley("retire", id, "--force")
+			if err := member.Terminate(id); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(f.motley("ls"), id) {
+				t.Fatal("terminated import stayed in active list")
+			}
 			data, err := os.ReadFile(filepath.Join(cwd, "unfinished.txt"))
 			if err != nil || string(data) != "keep this work" {
 				t.Fatal("imported work deleted", err)

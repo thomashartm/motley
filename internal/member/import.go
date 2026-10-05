@@ -278,7 +278,7 @@ func ExternalTerminal(id string) error {
 	if s.Kind == "background" {
 		return fmt.Errorf("%s runs in the background; open it with claude attach %s", m.Name, s.ID)
 	}
-	return fmt.Errorf("%s runs in its original terminal in %s; switch to it there, or Terminate and Revive to run it in Motley", m.Name, m.Worktree)
+	return fmt.Errorf("%s runs in its original terminal in %s; switch to it there, or stop it there and use Revive to run it in Motley", m.Name, m.Worktree)
 }
 
 func importedLive(m Manifest) (bool, error) {

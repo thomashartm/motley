@@ -118,7 +118,7 @@ func TestMouseUsesMergedFooterBounds(t *testing.T) {
 		if lines[height-1] != m.navigationBar() {
 			t.Fatal("navigation not on last row")
 		}
-		if strings.Count(lines[height-1], "·") != 4 {
+		if strings.Count(lines[height-1], "·") != len(m.navigationButtons())-1 {
 			t.Fatal("navigation items are missing separators")
 		}
 		for x, ch := range lines[height-1] {

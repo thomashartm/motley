@@ -29,7 +29,7 @@ func (m Model) actions() []navigationAction {
 		if m.selectedRow().CodexSession != "" {
 			openHelp = "Opens a terminal client to the same Codex server and conversation. The existing session continues running."
 		} else if m.selectedRow().External {
-			openHelp = "Shows where the agent is running in its original terminal. Switch there yourself, or terminate and revive it to run it in Motley."
+			openHelp = "Shows where the agent is running in its original terminal. Switch there yourself. To move it into Motley, stop it there and use Revive. Terminate stops it and archives its entry."
 		}
 		if len(m.selectedRow().ClaudeSessions) > 0 {
 			openHelp = "Opens the primary conversation shown in Details. Use Switch tracked session to choose another conversation; all linked conversations stay monitored."
@@ -71,7 +71,7 @@ func (m Model) actions() []navigationAction {
 		}
 		add("Session & cleanup", "Revive member (r)", "r", reviveHelp, false)
 		if m.selectedRow().CodexSession == "" {
-			add("Session & cleanup", "Terminate agent (d)", "d", "Asks for confirmation, then stops this member's agent and all explicitly linked foreground/background conversations. Keeps its worktree, branch and history.", true)
+			add("Session & cleanup", "Terminate agent (d)", "d", "Stops the tracked agent and removes its entry from the active list after confirmation. Already stopped entries are removed too. Archives history and keeps all files and branches.", true)
 		}
 		if m.selectedRow().CodexSession != "" {
 			add("Session & cleanup", "Retire member; keep files (x)", "x", "Closes its Motley terminal and archives the Motley entry. Keeps the Codex conversation and running work on the shared server, plus all files and branches.", false)
