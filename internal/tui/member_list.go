@@ -146,6 +146,12 @@ func (m Model) listLayout(height, width int) memberListLayout {
 	} else {
 		layout.fixed = append(layout.fixed, memberListLine{m.memberTableHeader(width), listHeading})
 		lastSection, lastCrew := "", ""
+		if m.group != "repo" && (len(m.rows) == 0 || section(m.rows[0]) != "NEEDS YOU") {
+			layout.body = append(layout.body,
+				memberListLine{lipgloss.NewStyle().Bold(true).Render("NEEDS YOU"), listHeading},
+				memberListLine{lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render("  None"), listHeading},
+			)
+		}
 		for i, r := range m.rows {
 			group := section(r)
 			if m.group == "repo" {

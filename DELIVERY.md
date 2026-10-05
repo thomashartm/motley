@@ -1,5 +1,21 @@
 # Delivery checkpoints
 
+## Keep empty Needs You visible — 2026-10-05
+
+Repository rules checked: local Git/gh CLI, feature branch retained in this
+linked worktree, and delivery notes recorded here.
+
+Publication requested on `fix/needs-you-empty-section`, based on `origin/main`
+at `e25ae93` after PR #67 merged. Hosted CI is pending publication.
+
+The attention list keeps the `NEEDS YOU` heading and shows a muted `None` row
+when no visible members need attention, including an empty or filtered list.
+`WORKING` stays below the empty section. The placeholder cannot select a member.
+
+Validation: `go test ./internal/tui`, `go vet ./internal/tui` and
+`git diff --check` passed. Regression coverage checks attention transitions,
+empty and filtered lists, and mouse targets for the placeholder and member row.
+
 Document schema: `1`
 
 motley is built one usable slice at a time. Scope and acceptance criteria live in
