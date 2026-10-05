@@ -249,13 +249,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.retiring.loaded = true
 		}
 	case lifecycleDone:
-		m.terminating = nil
 		m.busy = false
 		m.busyText = ""
+		if m.terminating != nil && msg.action == "Terminated" && msg.err != nil {
+			d := *m.terminating
+			d.err = msg.err.Error()
+			m.terminating = &d
+			m.message = d.err
+			return m, nil
+		}
+		m.terminating = nil
 		m.retiring = nil
 		if msg.err != nil {
 			m.message = msg.err.Error()
 		} else {
+			if msg.action == "Terminated" {
+				// Do not leave the archived entry visible if the next poll fails
+				// while discovering an unrelated imported agent.
+				var remaining []member.Row
+				for _, row := range m.allRows {
+					if row.ID != msg.id {
+						remaining = append(remaining, row)
+					}
+				}
+				m.allRows = remaining
+				m.event, m.gitDetail = state.Event{}, ""
+				m.applyFilter()
+				if len(m.rows) == 0 {
+					m.selectOverview()
+				}
+			}
 			m.message = msg.action + " " + msg.id
 		}
 		return m, m.poll

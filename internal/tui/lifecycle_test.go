@@ -110,8 +110,40 @@ func TestTerminateSelectedMemberAndCancel(t *testing.T) {
 	}
 	m = update(m, snapshot{rows: []member.Row{row("beta", false)}})
 	next, cmd = m.Update(key("d"))
-	if cmd != nil || next.(Model).terminating != nil {
-		t.Fatal("dead member can be terminated")
+	if cmd != nil || next.(Model).terminating == nil || !strings.Contains(next.(Model).terminateView(20), "Already stopped") {
+		t.Fatal("stopped entry cannot be removed")
+	}
+}
+
+func TestTerminateFromListAndVisibleFailure(t *testing.T) {
+	for _, size := range [][2]int{{60, 10}, {80, 20}, {120, 30}} {
+		m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+		m = update(m, snapshot{rows: []member.Row{row("alpha", true), row("beta", false)}})
+		m = update(m, key("j"))
+		bar := m.navigationBar()
+		index := strings.Index(bar, "[d Terminate]")
+		if index < 0 || ansi.StringWidth(bar) > m.width-2 {
+			t.Fatal("list termination missing or clipped", bar)
+		}
+		next, cmd := mouseClick(m, ansi.StringWidth(bar[:index])+1, m.height-1)
+		m = next.(Model)
+		if cmd != nil || m.terminating == nil || m.terminating.id != "beta" || !m.terminating.stopped {
+			t.Fatal("direct control did not confirm selected stopped entry")
+		}
+		m = update(m, tea.WindowSizeMsg{Width: 120, Height: 30})
+		m = update(m, lifecycleDone{id: "beta", action: "Terminated", err: errors.New("agent refused to stop")})
+		if m.terminating == nil || m.busy || !strings.Contains(m.terminateView(m.contentHeight()), "agent refused to stop") || len(m.rows) != 2 {
+			t.Fatal("failure hidden or entry removed")
+		}
+		next, cmd = m.Update(key("y"))
+		if !next.(Model).busy || cmd == nil {
+			t.Fatal("failure cannot be retried")
+		}
+		m = update(next.(Model), lifecycleDone{id: "beta", action: "Terminated"})
+		m = update(m, snapshot{err: errors.New("unrelated discovery failed")})
+		if len(m.rows) != 1 || m.rows[0].ID != "alpha" || m.terminating != nil {
+			t.Fatal("archived entry stayed listed after polling failure")
+		}
 	}
 }
 

@@ -356,8 +356,16 @@ func TestLifecycleTUI(t *testing.T) {
 	}()
 	eventually(t, func() bool { return strings.Contains(screen(), "1 alive") })
 	writeFixture(t, filepath.Join(m.Worktree, "dirty.txt"), "unfinished", 0600)
-	terminal.send(t, "d")
-	eventually(t, func() bool { return strings.Contains(screen(), "Terminate "+id+"?") })
+	// Terminate is directly clickable from the list, without opening Actions.
+	eventually(t, func() bool { return strings.Contains(screen(), "[d Terminate]") })
+	for y, line := range strings.Split(screen(), "\n") {
+		if index := strings.Index(line, "[d Terminate]"); index >= 0 {
+			x := ansi.StringWidth(line[:index]) + 1
+			terminal.send(t, fmt.Sprintf("\x1b[<0;%d;%dM\x1b[<0;%d;%dm", x, y+1, x, y+1))
+			break
+		}
+	}
+	eventually(t, func() bool { return strings.Contains(screen(), "Terminate "+m.Name+"?") })
 	clicked := false
 	for y, line := range strings.Split(screen(), "\n") {
 		if index := strings.Index(line, "Terminate (y)"); index >= 0 {
@@ -373,15 +381,26 @@ func TestLifecycleTUI(t *testing.T) {
 	eventually(t, func() bool {
 		return strings.Contains(screen(), "Terminated "+id) && strings.Contains(screen(), "0 alive")
 	})
-	assertListState(t, f.motley("ls"), id, "dead")
+	if strings.Contains(f.motley("ls"), id) {
+		t.Fatal("terminated member still listed")
+	}
 	data, err := os.ReadFile(filepath.Join(m.Worktree, "dirty.txt"))
 	if err != nil || string(data) != "unfinished" {
 		t.Fatal("termination lost work", err)
 	}
 	f.git(f.repo, "show-ref", "--verify", "refs/heads/"+m.Branch)
-	if after := f.manifest(id); after.CreatedAt != m.CreatedAt {
-		t.Fatal("termination rewrote manifest")
+	after, err := member.Load(filepath.Join(f.state, "motley/members/archive"), id)
+	if err != nil || after.CreatedAt != m.CreatedAt || after.RetiredAt == nil {
+		t.Fatal("termination did not archive manifest", err)
 	}
+	// A normally stopped entry, unlike a terminated one, can still be revived.
+	id = "feat-resume"
+	f.motley("spawn", "--repo", "api", "--branch", "feat/resume", "--detach")
+	m = f.manifest(id)
+	writeFixture(t, filepath.Join(m.Worktree, "dirty.txt"), "unfinished", 0600)
+	f.tmux("kill-session", "-t", "="+id)
+	eventually(t, func() bool { return strings.Contains(screen(), "1 dead") })
+	terminal.send(t, "\x1b[B")
 	terminal.send(t, "r")
 	eventually(t, func() bool { return strings.Contains(screen(), "Revived "+id) && strings.Contains(screen(), "1 alive") })
 	terminal.send(t, "x")

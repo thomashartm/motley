@@ -258,7 +258,11 @@ mtly retire <member-id>
 mtly retire <member-id> --keep-branch
 ```
 
-- **Revive:** requires an existing worktree and a missing Motley tmux session.
+- **Terminate (d):** available directly from the list's bottom bar. Stops tracked
+  agents, archives history and removes the entry, keeping all files and branches.
+  Already-stopped entries can be removed with the same confirmation. A stop
+  failure keeps the entry and shows the error in the dialog for retry.
+- **Revive:** requires an active entry, an existing worktree and a missing Motley tmux session.
   If the agent ended but its tmux shell remains, restart it in that shell.
 - **Resume:** uses the last recorded agent session ID; without one, starts fresh.
 - **Retire managed work:** removes the session, worktree and local branch, except
@@ -268,7 +272,8 @@ mtly retire <member-id> --keep-branch
 - **Retire imported Codex:** closes Motley's client and removes its entry; keeps
   the server conversation and its running work. Stop turns from Codex itself.
 
-Run retirement from the monitor or another session. Retired members cannot be revived.
+Run termination or retirement from the monitor or another session. Archived
+entries cannot be revived.
 
 ## Configuration paths
 

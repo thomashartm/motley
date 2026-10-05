@@ -145,7 +145,7 @@ func (m Model) memberDetails() string {
 			session = append(session, detailField{"Open target", "Primary conversation: " + clean(r.ClaudeSession) + ". Switch tracked session changes this target; linked conversations stay monitored."})
 		}
 		if r.External {
-			session = append(session, detailField{"Terminal", "Runs in its original terminal; Terminate and Revive to run it in Motley."})
+			session = append(session, detailField{"Terminal", "Runs in its original terminal. Stop it there, then use Revive to run it in Motley. Terminate archives the entry."})
 		}
 	}
 	section("Session", session)

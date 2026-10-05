@@ -57,8 +57,10 @@ func TestActionsGroupsAndConsequences(t *testing.T) {
 				}
 			}
 		case "d":
-			if !strings.Contains(text, "confirmation") || !strings.Contains(text, "Keeps its worktree") {
-				t.Fatal(view)
+			for _, want := range []string{"confirmation", "removes its entry", "Archives history", "keeps all files and branches"} {
+				if !strings.Contains(text, want) {
+					t.Fatalf("termination consequence missing: %s\n%s", want, view)
+				}
 			}
 		case "r":
 			if !strings.Contains(text, "Immediately restarts") || !strings.Contains(text, "Does not restore retired") {
@@ -168,7 +170,7 @@ func TestActionsWithoutMember(t *testing.T) {
 func TestActionsDoNotCaptureFooterClicks(t *testing.T) {
 	m := actionModel(60, 10)
 	next, cmd := m.Update(tea.MouseMsg{
-		X: ansi.StringWidth(m.navigationBar()[:strings.Index(m.navigationBar(), "[q Close]")]) + 1, Y: m.height - 1,
+		X: ansi.StringWidth(m.navigationBar()[:strings.Index(m.navigationBar(), "[q]")]) + 1, Y: m.height - 1,
 		Button: tea.MouseButtonLeft, Action: tea.MouseActionPress,
 	})
 	if cmd == nil {

@@ -13,6 +13,9 @@ type terminateDialog struct {
 	confirm  bool
 	external bool
 	grouped  bool
+	stopped  bool
+	name     string
+	err      string
 }
 
 func (m Model) beginTerminate() (tea.Model, tea.Cmd) {
@@ -24,11 +27,8 @@ func (m Model) beginTerminate() (tea.Model, tea.Cmd) {
 		m.message = "Codex runs on a shared server; stop the turn in Codex, or Retire to remove only its Motley entry."
 		return m, nil
 	}
-	if !m.selectedRow().Alive {
-		m.message = "This agent session is already stopped. Use Revive to restart it."
-		return m, nil
-	}
-	m.terminating = &terminateDialog{id: id, external: m.selectedRow().External, grouped: len(m.selectedRow().ClaudeSessions) > 0}
+	r := m.selectedRow()
+	m.terminating = &terminateDialog{id: id, name: r.Name, external: r.External, grouped: len(r.ClaudeSessions) > 0, stopped: !r.Alive}
 	m.message = ""
 	return m, nil
 }
@@ -50,6 +50,7 @@ func (m Model) updateTerminate(key string) (tea.Model, tea.Cmd) {
 	case "esc", "q", "n":
 		m.terminating = nil
 	case "y":
+		d.err = ""
 		m.busy = true
 		m.busyText = "Terminating…"
 		return m, func() tea.Msg { return lifecycleDone{id: d.id, action: "Terminated", err: member.Terminate(d.id)} }
@@ -72,7 +73,17 @@ func (m Model) terminateView(height int) string {
 	if m.terminating.grouped {
 		action = "Stops all tracked foreground and background conversations."
 	}
-	text := "Terminate " + clean(m.terminating.id) + "?\n" + action + "\nKeeps worktree, branch and history. Use Revive to restart."
+	if m.terminating.stopped {
+		action = "Already stopped. Removes this entry from the active list."
+	}
+	name := m.terminating.name
+	if name == "" {
+		name = m.terminating.id
+	}
+	text := "Terminate " + clean(name) + "?\n" + action + "\nRemoves the entry from the list and archives its history. Keeps all files and branches."
+	if m.terminating.err != "" {
+		text = "Termination failed: " + clean(name) + "\n" + m.terminating.err + "\nEntry kept. Retry with y or cancel with esc."
+	}
 	lines := strings.Split(ansi.Hardwrap(text, m.detailWidth(), true), "\n")
 	// Keep the confirmation beside its explanation, even in small terminals.
 	if height >= 4 {
