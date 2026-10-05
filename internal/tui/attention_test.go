@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/thomashartm/motley/internal/member"
 	"github.com/thomashartm/motley/internal/state"
 )
@@ -17,6 +18,46 @@ func statusRow(id, status string, since int64) member.Row {
 	r.Since = since
 	return r
 }
+
+func TestNeedsYouRemainsWhenEmpty(t *testing.T) {
+	m := update(newModel(false, true, "client", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
+	for _, status := range []string{"question", "working", "ready", "working"} {
+		m = update(m, snapshot{rows: []member.Row{statusRow("agent", status, 1)}})
+		view := ansi.Strip(m.listView(m.listContentHeight(), m.listWidth()))
+		if strings.Count(view, "NEEDS YOU") != 1 {
+			t.Fatalf("expected one Needs You heading for %s:\n%s", status, view)
+		}
+		if status != "working" {
+			if strings.Contains(view, "  None") {
+				t.Fatalf("populated Needs You shows None:\n%s", view)
+			}
+			continue
+		}
+		if !strings.Contains(view, "NEEDS YOU\n  None\n\nWORKING") {
+			t.Fatalf("empty Needs You must precede Working:\n%s", view)
+		}
+		m = update(m, key("home"))
+		for _, label := range []string{"NEEDS YOU", "  None"} {
+			m = click(m, 3, listScreenY(t, m, label))
+			if !m.overview {
+				t.Fatalf("clicking %q selected a member", label)
+			}
+		}
+		m = click(m, 3, listScreenY(t, m, "agent"))
+		if m.selectedID() != "agent" {
+			t.Fatal("placeholder shifted the member mouse target")
+		}
+	}
+	for _, query := range []string{"", "unmatched"} {
+		m.query.SetValue(query)
+		m = update(m, snapshot{})
+		view := ansi.Strip(m.listView(m.listContentHeight(), m.listWidth()))
+		if !strings.Contains(view, "NEEDS YOU\n  None") {
+			t.Fatalf("empty list lost Needs You for query %q:\n%s", query, view)
+		}
+	}
+}
+
 func TestAttentionOrderAndAlerts(t *testing.T) {
 	rows := []member.Row{statusRow("ready", "ready", 30), statusRow("work", "working", 1), statusRow("question", "question", 20), statusRow("permission", "permission", 10), statusRow("idle", "idle", 40), statusRow("dead", "dead", 1), statusRow("ended", "ended", 1)}
 	m := update(newModel(true, true, "monitor", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
