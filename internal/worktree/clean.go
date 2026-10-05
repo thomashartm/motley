@@ -52,6 +52,11 @@ func registered(repo, path, branch string, removal bool) (bool, error) {
 		if r.Bare || r.Branch != branch {
 			return false, fmt.Errorf("worktree identity changed at %s (branch %q, expected %q)", path, r.Branch, branch)
 		}
+		if !removal && target != main {
+			if err := CheckFeatureBranch(repo, r.Branch); err != nil {
+				return false, err
+			}
+		}
 		return true, nil
 	}
 	if _, err := os.Lstat(path); !os.IsNotExist(err) {
@@ -108,7 +113,7 @@ func CleanOne(repo, path, branch string, keepBranch bool) error {
 			}
 		}
 	}
-	if branch != "" && !keepBranch && !Protected(branch) {
+	if branch != "" && !keepBranch && CheckFeatureBranch(repo, branch) == nil {
 		// A previous attempt may already have removed the branch.
 		if _, err := gitx.Output(repo, "show-ref", "--verify", "--quiet", "refs/heads/"+branch); err == nil {
 			if _, err := gitx.Output(repo, "branch", "-D", "--", branch); err != nil {

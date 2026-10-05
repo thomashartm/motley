@@ -184,6 +184,9 @@ func execAgentCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := m.CheckCheckout(); err != nil {
+				return err
+			}
 			if err := os.Chdir(m.Worktree); err != nil {
 				return err
 			}
@@ -198,13 +201,13 @@ func execAgentCommand() *cobra.Command {
 			}
 			sessionID := ""
 			if resume {
+				sessionID = m.ClaudeSession
+			}
+			if resume && sessionID == "" {
 				sessionID, err = state.LatestSessionID(filepath.Join(dir, m.ID+".events.jsonl"), m.Agent)
 				if err != nil {
 					return err
 				}
-			}
-			if resume && sessionID == "" {
-				sessionID = m.ClaudeSession
 			}
 			prompt := ""
 			if !resume && (m.Prompt || m.Blueprint != "") {

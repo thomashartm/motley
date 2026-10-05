@@ -56,3 +56,21 @@ func TestTailRefusesFIFO(t *testing.T) {
 		t.Fatal("FIFO accepted")
 	}
 }
+
+func TestResumeIgnoresNotificationsAndSubagents(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "events.jsonl")
+	for _, own := range []string{"", `{"agent":"claude","event":"SessionStart","agent_session_id":"own"}` + "\n"} {
+		log := own + `{"agent":"claude","event":"Notification","agent_session_id":"picker"}` + "\n" +
+			`{"agent":"claude","event":"Stop","agent_session_id":"background","detail":{"agent_id":"child"}}` + "\n"
+		if err := os.WriteFile(path, []byte(log), 0600); err != nil {
+			t.Fatal(err)
+		}
+		want := ""
+		if own != "" {
+			want = "own"
+		}
+		if got, err := LatestSessionID(path, "claude"); err != nil || got != want {
+			t.Fatal(got, err)
+		}
+	}
+}

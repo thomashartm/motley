@@ -1635,3 +1635,62 @@ entries are retained. All TUI tests and the real-tmux overview/monitor, selectio
 clipboard and message clipboard tests passed. `go vet ./...`, CI-pinned lint
 (0 issues), and diff checks passed. Pushing the merge resolution to the existing
 PR branch; hosted CI will run on the updated head.
+
+## Workspace identity, feature branches and termination — 2026-10-05
+
+Repository rules checked: Git/gh CLI and delivery notes here. Moved this clean
+checkout from `main` to `fix/session-workspace-cleanup`, then switched the primary
+`~/projects/motley` checkout to `main`. Its untracked `tasks/` and the former
+`docs/readme-screenshot` branch are preserved. The reflog shows this worktree was
+switched to main after earlier feature work; this was not a spawn operation.
+AGENTS.md now explicitly reserves main for the primary checkout, including after
+merges and cleanup.
+
+Live diagnosis of `infrastructure-stacks-8d`: its manifest names the primary
+infrastructure-stacks checkout on main, but no longer contains `claude_session`.
+Its owned terminal runs `claude agents`; the visible conversation works in
+infinite-deployment-drive. The shell still reports infrastructure-stacks as its
+working directory. The retained log contains only Notifications, spanning two
+conversation IDs. Thus a terminal's starting directory did not identify the
+conversation displayed by Claude's picker. Hooks trusted inherited MOTLEY_MEMBER
+without comparing payload cwd, and resume selected the last event's conversation
+ID. The live files do not establish which earlier write removed claude_session.
+
+Changes:
+- Hook workspace mismatches produce an attention message without retaining the
+  foreign conversation ID. Imported resumes use their explicitly tracked primary
+  conversation. Notification and subagent IDs cannot become native resume targets.
+- Creation, adoption, import and restart reject protected/default branches in
+  linked worktrees. origin/HEAD identifies custom defaults; main/master remain
+  the fallback. Existing borrowed primary checkouts remain supported. Cleanup
+  retains default branches. Agent startup rechecks checkout registration.
+- Terminate has clickable Cancel/Terminate choices beside its explanation and
+  retains its footer shortcuts. Owned terminal termination no longer depends on
+  successful discovery of unrelated imported agents. Ownership checks remain.
+
+The user reports that the confirmation key never appeared. A fresh isolated
+instance of the installed binary displayed its footer at 120x30, so the exact
+live clipping condition was not reproduced. New tests click the visible in-panel
+choice in a real tmux terminal, verify the session stops and preserve dirty files,
+branch and manifest. Resize tests cover the same choices in smaller layouts.
+
+Validation: full Go suite passed; focused tests after the final changes passed.
+Coverage includes workspace mismatch and symlink aliases, notification pollution,
+explicit imported resume identity, default-branch creation/import/restart refusal,
+adoption refusal and termination despite unrelated discovery failure. Vet,
+CI-pinned lint (0 issues), installer/uninstaller and OpenCode plugin tests passed.
+Four-platform builds and final local installation are checked below.
+
+Local installation completed after four-platform builds passed. Previous binary:
+`~/.motley/local-fix-backups/session-workspace-cleanup-20261005T070613Z/motley`.
+Installed binary checksum matches `bin/motley`. Restarted only `_motley`'s monitor
+pane; readback confirmed every other pane and PID unchanged. The live monitor is
+filtered to infrastructure-stacks and displays both `Cancel (esc)` and
+`Terminate (y)` inside its confirmation panel, as well as the footer controls.
+The dialog is left open with Cancel selected. No agent was terminated and no live
+member manifest, conversation, worktree or event history was removed.
+
+Publication requested: publish `fix/session-workspace-cleanup` as a pull request
+against `main`. Refreshed origin before committing; the branch base is current
+at `6d6aabf`. Source is unchanged from the locally validated implementation.
+Hosted CI will run after publication; local verification is recorded above.

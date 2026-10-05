@@ -147,6 +147,36 @@ func TestRetireMouseChoices(t *testing.T) {
 	}
 }
 
+func TestTerminatePanelChoices(t *testing.T) {
+	for _, height := range []int{12, 25, 45} {
+		m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 100, Height: height})
+		m.terminating = &terminateDialog{id: "target"}
+		lines := strings.Split(ansi.Strip(m.View()), "\n")
+		for _, label := range []string{"Cancel (esc)", "Terminate (y)"} {
+			found := false
+			for y, line := range lines {
+				x := strings.Index(line, label)
+				if x < 0 {
+					continue
+				}
+				found = true
+				x = ansi.StringWidth(line[:x])
+				next, cmd := m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+				got := next.(Model)
+				if label == "Terminate (y)" && (!got.busy || cmd == nil) {
+					t.Fatal("visible confirmation did not execute")
+				}
+				if label == "Cancel (esc)" && (got.terminating != nil || cmd != nil) {
+					t.Fatal("visible cancel did not cancel")
+				}
+			}
+			if !found {
+				t.Fatalf("height %d: missing %s", height, label)
+			}
+		}
+	}
+}
+
 func TestRetireLayoutWithLongCheckout(t *testing.T) {
 	path := "/Users/thomas/projects/aderis/infrastructure-stacks-feature-125-async-batching-infrastructure"
 	for _, size := range [][2]int{{60, 10}, {100, 25}, {200, 35}} {

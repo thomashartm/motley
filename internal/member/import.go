@@ -122,6 +122,9 @@ func Import(agent, sessionID, name, crewID string) (Manifest, error) {
 	} else {
 		m.ClaudeSession = sessionID
 	}
+	if err := m.CheckCheckout(); err != nil {
+		return Manifest{}, err
+	}
 	if err := saveManifest(dir, m); err != nil {
 		return Manifest{}, err
 	}

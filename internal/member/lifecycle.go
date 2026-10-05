@@ -295,8 +295,14 @@ func Terminate(id string) error {
 			return stopExternal(m)
 		}
 	}
-	if err := RequireLive(id); err != nil {
+	// Termination needs only this terminal's ownership, not discovery of every
+	// unrelated imported agent (which may be unavailable or mismatched).
+	live, err := importedLive(m)
+	if err != nil {
 		return err
+	}
+	if !live {
+		return fmt.Errorf("member %s is already stopped", id)
 	}
 	if os.Getenv("TMUX") != "" && os.Getenv("TMUX_PANE") != "" {
 		session, err := tmux.CurrentSession()
@@ -356,6 +362,9 @@ func Revive(id string) error {
 	}
 	if info, err := os.Stat(m.Worktree); err != nil || !info.IsDir() {
 		return fmt.Errorf("worktree for %s is unavailable", id)
+	}
+	if err := m.CheckCheckout(); err != nil {
+		return err
 	}
 	if _, err := agents.Binary(m.Agent); err != nil {
 		return err
@@ -422,6 +431,9 @@ func Adopt(opts AdoptOptions) (Manifest, error) {
 	}
 	if !found || repo == path {
 		return Manifest{}, fmt.Errorf("adopt requires a linked worktree; the main checkout is never managed")
+	}
+	if err := worktree.CheckFeatureBranch(repo, branch); err != nil {
+		return Manifest{}, err
 	}
 	base, err := worktree.Base(repo)
 	if err != nil {
