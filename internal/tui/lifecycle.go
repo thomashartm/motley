@@ -53,6 +53,9 @@ func (m Model) beginRevive() (tea.Model, tea.Cmd) {
 	if id == "" {
 		return m, nil
 	}
+	if m.selectedRow().CurrentStatus() == "moved" {
+		return m.beginSwitchSession()
+	}
 	if m.selectedRow().Alive {
 		m.message = "Revive requires a dead member; this session is still alive."
 		return m, nil

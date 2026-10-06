@@ -116,6 +116,14 @@ be revived. Revive applies to stopped entries still in the active list.
 for imported Codex, it only closes Motley's client and removes the entry.
 Imported Codex has no Terminate action. [Lifecycle details →](docs/advanced.md#stop-resume-and-retire)
 
+After changing an imported Claude session's workspace, select its **moved** row
+and click **Reimport session (S)** at the top of Details, then select the session
+at its new path. The same action is available in Actions and with Shift+S.
+You can also select **Reimport:** under **Add existing agent → Claude**, or run
+`mtly import <session-id>`. Reimport updates the existing member, preserving its
+name, crew and history while the conversation keeps running. Terminate and Retire
+then work with the new workspace.
+
 To monitor foreground and background Claude conversations together, select a
 member and use **Track another session (A)**, or run
 `mtly import <session-id> --with <member-id>` (`--list` shows candidates).

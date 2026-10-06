@@ -36,6 +36,9 @@ func importCommand() *cobra.Command {
 				return err
 			}
 			for _, s := range sessions {
+				if s.ReimportID != "" {
+					s.Name = "Reimport: " + s.Name
+				}
 				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.SessionID, s.Name, s.Status, s.Kind, s.Cwd); err != nil {
 					return err
 				}
@@ -58,18 +61,18 @@ func importCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Now tracking %s for %s. Both sessions keep running.\n", m.ClaudeSession, m.ID)
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Now tracking %s for %s. Existing sessions keep running.\n", m.ClaudeSession, m.ID)
 			return err
 		}
 		m, err := member.Import(agent, args[0], name, crew)
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Added %s. The existing %s session keeps running.\nOpen the monitor: mtly monitor\n", m.ID, agent)
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Tracking %s. The existing %s session keeps running.\nOpen the monitor: mtly monitor\n", m.ID, agent)
 		return err
 	}}
 	cmd.Flags().StringVar(&agent, "agent", "claude", "Session provider: claude or codex")
-	cmd.Flags().BoolVar(&list, "list", false, "List running sessions not already in Motley")
+	cmd.Flags().BoolVar(&list, "list", false, "List unregistered sessions and moved sessions available to reimport")
 	cmd.Flags().StringVar(&name, "name", "", "Display name")
 	cmd.Flags().StringVar(&crew, "crew", "", "Crew ID")
 	cmd.Flags().StringVar(&replace, "replace", "", "Switch an imported Claude member to the selected session, preserving both processes")

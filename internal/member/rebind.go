@@ -8,8 +8,8 @@ import (
 	"github.com/thomashartm/motley/internal/tmux"
 )
 
-// ReplacementSessions offers unregistered live sessions in this member's
-// checkout. Choosing another checkout would invalidate its repository metadata.
+// ReplacementSessions offers other conversations in the saved checkout and the
+// member's own primary conversation after a workspace change.
 func ReplacementSessions(id string) ([]ImportCandidate, error) {
 	dir, err := state.MembersDir()
 	if err != nil {
@@ -28,7 +28,7 @@ func ReplacementSessions(id string) ([]ImportCandidate, error) {
 	}
 	var candidates []ImportCandidate
 	for _, s := range sessions {
-		if sameDirectory(m.Worktree, s.Cwd) {
+		if s.ReimportID == m.ID || (s.ReimportID == "" && sameDirectory(m.Worktree, s.Cwd)) {
 			candidates = append(candidates, s)
 		}
 	}
@@ -61,7 +61,7 @@ func AdditionalSessions(id string) ([]ImportCandidate, error) {
 	}
 	var result []ImportCandidate
 	for _, s := range candidates {
-		if !m.TracksClaude(s.SessionID) {
+		if s.ReimportID == "" && !m.TracksClaude(s.SessionID) {
 			result = append(result, s)
 		}
 	}
@@ -104,6 +104,9 @@ func trackClaudeSession(id, sessionID string, additional bool) (Manifest, error)
 	found := false
 	for _, s := range candidates {
 		if s.SessionID == sessionID {
+			if s.ReimportID == m.ID && !additional {
+				return m.reimportClaude(dir, s)
+			}
 			found = true
 		}
 	}

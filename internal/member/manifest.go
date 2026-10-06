@@ -176,6 +176,9 @@ func (r Row) CurrentStatus() string {
 	if !r.Alive {
 		return "dead"
 	}
+	if r.Status == "moved" {
+		return "moved"
+	}
 	if !state.ValidStatus(r.Status) {
 		return "alive"
 	}

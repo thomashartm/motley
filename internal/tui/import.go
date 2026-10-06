@@ -21,6 +21,7 @@ type importLoaded struct {
 }
 type importDone struct {
 	additional bool
+	reimported bool
 	member     member.Manifest
 	err        error
 	replaced   bool
@@ -88,6 +89,9 @@ func (m Model) importMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.replaced {
 			m.message = "Now tracking " + msg.member.ClaudeSession + "; both sessions keep running."
 		}
+		if msg.reimported {
+			m.message = "Reimported " + msg.member.Name + " in " + msg.member.Worktree + "; session keeps running."
+		}
 		if msg.additional {
 			m.message = "Tracking both conversations for " + msg.member.Name + "; both keep running."
 		}
@@ -116,6 +120,7 @@ func (m Model) updateImport(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		id := d.sessions[d.cursor].SessionID
+		reimported := d.sessions[d.cursor].ReimportID != ""
 		if d.additional {
 			m.busy, m.busyText = true, "Tracking another session…"
 			return m, func() tea.Msg {
@@ -127,13 +132,13 @@ func (m Model) updateImport(key string) (tea.Model, tea.Cmd) {
 			m.busy, m.busyText = true, "Switching tracked session…"
 			return m, func() tea.Msg {
 				member, err := member.SwitchClaudeSession(d.replaceID, id)
-				return importDone{member: member, err: err, replaced: true}
+				return importDone{member: member, err: err, replaced: true, reimported: reimported}
 			}
 		}
 		m.busy, m.busyText = true, "Adding "+d.agent+" session…"
 		return m, func() tea.Msg {
 			member, err := member.Import(d.agent, id, "", "")
-			return importDone{member: member, err: err}
+			return importDone{member: member, err: err, reimported: reimported}
 		}
 	}
 	return m, nil
