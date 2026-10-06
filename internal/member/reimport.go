@@ -28,12 +28,20 @@ func (m Manifest) reimportClaude(dir string, s ImportCandidate) (Manifest, error
 			}
 		}
 	}
+	previous := m
+	moved := !sameDirectory(m.Worktree, s.Cwd)
 	if err := m.setImportedWorkspace(s.Cwd); err != nil {
 		return Manifest{}, err
 	}
-	// Release stale terminal ownership; never stop or resume the conversation.
-	if err := tmux.Release(m.ID); err != nil {
-		return Manifest{}, err
+	if m.RepoPath == previous.RepoPath && m.Branch == previous.Branch && m.RemoteURL == previous.RemoteURL {
+		m.GH = previous.GH
+	}
+	// Release only stale terminal ownership. Refreshing an unchanged binding
+	// must leave its current Motley terminal attached.
+	if moved {
+		if err := tmux.Release(m.ID); err != nil {
+			return Manifest{}, err
+		}
 	}
 	if err := saveManifest(dir, m); err != nil {
 		return Manifest{}, err

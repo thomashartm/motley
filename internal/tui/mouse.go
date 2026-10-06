@@ -180,13 +180,7 @@ func (m Model) mouseControls(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	}
-	if m.panel != actionsPanel && (m.group != "crew" || m.currentEntry().id != "") {
-		if label := m.reimportDetailAction(); label != "" &&
-			m.panelContentY(msg.Y) >= 0 && m.panelContentY(msg.Y)+m.detail.YOffset == 1 &&
-			msg.X >= m.listWidth()+3 && msg.X < m.listWidth()+3+ansi.StringWidth(label) {
-			return m.beginSwitchSession()
-		}
-	}
+
 	height := m.contentHeight()
 	y := m.panelContentY(msg.Y)
 	if msg.X >= 1 && msg.X <= m.listWidth() {

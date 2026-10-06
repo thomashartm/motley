@@ -9,7 +9,7 @@ import (
 )
 
 // ReplacementSessions offers other conversations in the saved checkout and the
-// member's own primary conversation after a workspace change.
+// member's live primary conversation, even when its workspace is unchanged.
 func ReplacementSessions(id string) ([]ImportCandidate, error) {
 	dir, err := state.MembersDir()
 	if err != nil {
@@ -28,19 +28,24 @@ func ReplacementSessions(id string) ([]ImportCandidate, error) {
 	}
 	var candidates []ImportCandidate
 	for _, s := range sessions {
-		if s.ReimportID == m.ID || (s.ReimportID == "" && sameDirectory(m.Worktree, s.Cwd)) {
+		if s.ReimportID == "" && sameDirectory(m.Worktree, s.Cwd) {
 			candidates = append(candidates, s)
 		}
 	}
-	if len(m.ClaudeSessions) > 0 {
-		live, err := claude.Sessions()
-		if err != nil {
-			return nil, err
+	live, err := claude.Sessions()
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range live {
+		if s.PID <= 0 || !m.TracksClaude(s.SessionID) {
+			continue
 		}
-		for _, s := range live {
-			if s.PID > 0 && s.SessionID != m.ClaudeSession && m.TracksClaude(s.SessionID) && sameDirectory(m.Worktree, s.Cwd) {
-				candidates = append(candidates, ImportCandidate{Agent: "claude", SessionID: s.SessionID, Name: s.Name, Cwd: s.Cwd, Status: s.MotleyStatus(), Kind: s.Kind})
-			}
+		candidate := ImportCandidate{Agent: "claude", SessionID: s.SessionID, Name: s.Name, Cwd: s.Cwd, Status: s.MotleyStatus(), Kind: s.Kind}
+		if s.SessionID == m.ClaudeSession {
+			candidate.ReimportID = m.ID
+			candidates = append([]ImportCandidate{candidate}, candidates...)
+		} else if sameDirectory(m.Worktree, s.Cwd) {
+			candidates = append(candidates, candidate)
 		}
 	}
 	return candidates, nil

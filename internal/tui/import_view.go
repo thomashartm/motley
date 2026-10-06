@@ -38,7 +38,7 @@ func (m Model) importRows(height int) []importRow {
 	if len(d.sessions) == 0 {
 		message := "No unregistered " + importAgentLabel(d.agent) + " sessions."
 		if d.replaceID != "" {
-			message = "No other sessions in this checkout."
+			message = "No running sessions available. Start Claude, then retry reimport; use Revive to resume a stopped session."
 		}
 		for _, line := range strings.Split(ansi.Wrap(message, width, ""), "\n") {
 			rows = append(rows, importRow{line, -1})

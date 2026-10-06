@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/thomashartm/motley/internal/member"
+	"github.com/thomashartm/motley/internal/state"
 )
 
 func TestImportPicker(t *testing.T) {
@@ -213,38 +214,43 @@ func TestMovedClaudeRecovery(t *testing.T) {
 	}
 }
 
-func TestMovedClaudeDetailsReimportButton(t *testing.T) {
-	for _, size := range [][2]int{{60, 10}, {80, 24}, {210, 45}} {
-		r := row("backend-62", true)
-		r.ClaudeSession, r.Status, r.External = "same-session", "moved", true
-		m := update(newModel(true, true, "", nil), tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		m = update(m, snapshot{rows: []member.Row{r}})
-		m = update(m, key("2"))
-		// Derive the pointer from the rendered screen, as a user clicking Details.
-		lines := strings.Split(ansi.Strip(m.View()), "\n")
-		x, y := -1, -1
-		for i, line := range lines {
-			if at := strings.Index(line, "[Reimport session (S)]"); at >= 0 {
-				x, y = ansi.StringWidth(line[:at])+3, i
+func TestClaudeReimportInActions(t *testing.T) {
+	for _, status := range []string{"moved", "working", "dead"} {
+		for _, size := range [][2]int{{60, 10}, {80, 24}, {210, 45}} {
+			r := row("backend-62", status != "dead")
+			r.ClaudeSession, r.Status, r.External = "same-session", status, true
+			m := update(newModel(true, true, "", nil), tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+			m = update(m, snapshot{rows: []member.Row{r}})
+			m.event = state.Event{Status: status, Summary: "Subagents are working"}
+			m.updateDetail()
+			if strings.Contains(m.memberDetails(), "[Reimport session (S)]") {
+				t.Fatal("action is still embedded in Details")
 			}
-		}
-		if x < 0 {
-			t.Fatal("Details hides recovery", size, m.View())
-		}
-		next, cmd := m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
-		if cmd == nil || next.(Model).importing == nil || next.(Model).importing.replaceID != r.ID {
-			t.Fatal("Details click did not open recovery", size)
-		}
-		// Scrolling the control offscreen must not leave a stale clickable row.
-		m.detail.SetYOffset(3)
-		next, cmd = m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
-		if m.detail.YOffset > 0 && (cmd != nil || next.(Model).importing != nil) {
-			t.Fatal("scrolled text triggered hidden action", size)
-		}
-		r.Status = "working"
-		m = update(m, snapshot{rows: []member.Row{r}})
-		if m.reimportDetailAction() != "" {
-			t.Fatal("reimport offered for unchanged workspace")
+			m = update(m, key("3"))
+			if len(m.actions()) < 2 || m.actions()[1].key != "S" {
+				t.Fatal("Reimport must be beside Open agent")
+			}
+			m = update(m, tea.KeyMsg{Type: tea.KeyDown})
+			lines := strings.Split(ansi.Strip(m.View()), "\n")
+			x, y := -1, -1
+			for i, line := range lines {
+				if at := strings.Index(line, "Reimport session (S)"); at >= 0 {
+					x, y = ansi.StringWidth(line[:at])+2, i
+					break
+				}
+			}
+			if x < 0 {
+				t.Fatal("Actions hides Reimport", size, m.View())
+			}
+			next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			if cmd == nil || next.(Model).importing == nil {
+				t.Fatal("Actions Enter did not open reimport")
+			}
+			next, _ = m.Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+			next, cmd = next.(Model).Update(tea.MouseMsg{X: x, Y: y, Button: tea.MouseButtonLeft, Action: tea.MouseActionRelease})
+			if cmd == nil || next.(Model).importing == nil || next.(Model).importing.replaceID != r.ID {
+				t.Fatal("Actions click did not open reimport", size)
+			}
 		}
 	}
 }
