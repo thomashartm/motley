@@ -1879,3 +1879,16 @@ Installed `local-reimport-visible` in both the primary checkout and
 an activity summary on a working Claude member. The standalone instance needs a
 restart to load the new executable. Published follow-up PR #70:
 https://github.com/thomashartm/motley/pull/70
+
+### Place reimport in Actions — 2026-10-06
+
+The user clarified that reimport belongs in the Actions panel. Removed the
+Details button and its mouse handling; Reimport session (S) now sits directly
+below Open agent in the selected Claude member's Actions list. Details only
+provides workspace information and recovery guidance.
+
+Full TUI tests, real-terminal Actions clicks for moved and unchanged sessions,
+keyboard recovery, vet, lint and native build passed. Both local binaries and
+the primary checkout source contain the change. Only the managed monitor was
+restarted; standalone instances need reopening. Installed local-reimport-actions;
+backup: /Users/thomas/.motley/local-fix-backups/reimport-actions-20261006T084326Z/motley. This correction updates open PR #70.

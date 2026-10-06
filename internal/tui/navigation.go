@@ -35,10 +35,12 @@ func (m Model) actions() []navigationAction {
 			openHelp = "Opens the primary conversation shown in Details. Use Switch tracked session to choose another conversation; all linked conversations stay monitored."
 		}
 		add("Member", "Open agent (o)", "o", openHelp, false)
+		if m.selectedRow().ClaudeSession != "" {
+			add("Member", "Reimport session (S)", "S", "Refresh this Claude session's workspace, or switch to another conversation. Preserves the member's name, crew and history. Sessions keep running.", false)
+		}
 		add("Member", "Edit member (e)", "e", "Opens an editor for the member's name, ticket, crew and colour. Changes apply when you save.", false)
 		if m.selectedRow().ClaudeSession != "" {
 			add("Member", "Track another session (A)", "A", "Track another foreground or background Claude conversation alongside this member. Shows their combined status; both conversations keep running.", false)
-			add("Member", "Reimport session (S)", "S", "Refresh this Claude session's workspace, or switch to another conversation. Preserves the member's name, crew and history. Sessions keep running.", false)
 		}
 		add("Member", "Open in browser (b)", "b", "Choose the branch, compare view, issue, PR or crew link to open in your browser. Only links that exist are offered.", false)
 		if onGitHub(m.selectedRow()) {

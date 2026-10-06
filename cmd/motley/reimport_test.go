@@ -196,7 +196,7 @@ func realPath(t *testing.T, path string) string {
 
 func TestReimportClaudePickerTerminal(t *testing.T) {
 	bin := buildLifecycleBinary(t)
-	for _, route := range []string{"add", "details", "shortcut", "unchanged"} {
+	for _, route := range []string{"add", "actions", "shortcut", "unchanged"} {
 		t.Run(route, func(t *testing.T) {
 			f := newMemberFixture(t, bin, "main")
 			sid, process := fakeExternalClaude(t, f, f.repo)
@@ -208,16 +208,17 @@ func TestReimportClaudePickerTerminal(t *testing.T) {
 			data, _ := json.Marshal([]claude.Session{{SessionID: sid, PID: process.Process.Pid, Cwd: cwd, Kind: "interactive", Status: "busy", Name: "Moved Claude"}})
 			writeFixture(t, filepath.Join(f.home, "sessions.json"), string(data), 0600)
 			terminal := startTerminal(t, exec.Command(bin, "--monitor"))
-			eventually(t, func() bool { return strings.Contains(terminal.text(), "[Reimport session (S)]") })
+			eventually(t, func() bool { return strings.Contains(terminal.text(), "[3 Actions]") })
 			switch route {
 			case "add":
 				terminal.send(t, "a")
 				eventually(t, func() bool { return strings.Contains(terminal.text(), "Add existing agent") })
 				terminal.send(t, "\r")
-			case "details", "unchanged":
-				terminal.send(t, "2")
-				// Actual 120x30 terminal: click the visible Details control.
-				terminal.send(t, "\x1b[<0;66;6M\x1b[<0;66;6m")
+			case "actions", "unchanged":
+				terminal.send(t, "3")
+				eventually(t, func() bool { return strings.Contains(terminal.text(), "Reimport session (S)") })
+				// Actual 120x30 terminal: Member heading, Open, then Reimport.
+				terminal.send(t, "\x1b[<0;66;8M\x1b[<0;66;8m")
 			case "shortcut":
 				before := len(terminal.text())
 				terminal.send(t, "2")
