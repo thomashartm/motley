@@ -1913,3 +1913,59 @@ keyboard recovery, vet, lint and native build passed. Both local binaries and
 the primary checkout source contain the change. Only the managed monitor was
 restarted; standalone instances need reopening. Installed local-reimport-actions;
 backup: /Users/thomas/.motley/local-fix-backups/reimport-actions-20261006T084326Z/motley. This correction updates open PR #70.
+
+## Explicit source branch in the spawn dialog — 2026-10-06
+
+Rules checked: use local Git and gh, keep this linked worktree on
+`fix/motley-ask-for-source-branch-on-spawn`, and record checkpoints here.
+
+The dialog now requires a source-branch selection after choosing the repository.
+It lists the default first, then unprefixed branch names, then other branches,
+with searchable local and fetched remote entries clearly distinguished. The
+selected source remains visible in the launch preview. Preparation carries its
+exact ref through to worktree creation while retaining the plain branch name
+for the manifest and blueprint base. Local sources retain unpushed commits;
+remote sources fetch their selected remote/ref before creation. A missing source
+fails instead of falling back to main. Existing CLI defaults remain unchanged.
+
+Focused worktree, member and TUI suites passed. Coverage includes branch grouping,
+nonstandard defaults, filtering, scrolling at small sizes, missing sources and
+real Git creation from local and remote branches.
+
+### Authorization selection
+
+The scope now also includes an authorization selector for every agent, including
+blueprints that previously bypassed the permission step. Codex presets mirror
+`~/bash/start-codex`: read-only, auto, approve-for-me, full-access and bypass.
+Claude retains its seven presets, including sandbox; OpenCode offers configured
+permissions or its native auto flag. Native CLI help was checked locally.
+Selections persist through manifest arguments and resume; conflicting blueprint
+permission flags are rejected before creation. Inherited permissions are an
+explicit selector choice. CLI help and advanced usage describe the same options.
+
+Focused suites, real-terminal spawn flows, and process-argument checks for every
+Codex preset and OpenCode auto passed. The terminal spawn test selects an
+unpushed feature parent and verifies the created worktree commit and permission
+arguments. Source preview gets its own row so issue/crew context stays visible.
+Argument-recording fixtures now publish complete receipts atomically after
+validation exposed reads of partially written files.
+
+Final validation: all internal packages and spawn acceptance tests passed in the
+full Go run. Its only remaining failure was an unrelated tmux mouse-link popup
+timeout; that test passed immediately in isolation. Vet, CI-pinned golangci-lint
+2.14.0, native and four-platform builds, installer/uninstaller and OpenCode plugin
+tests passed. Changes and the built binary remain in this feature worktree;
+nothing was installed, published or merged.
+
+### PR preparation — 2026-10-06
+
+Publication requested. Repository rules rechecked; the linked worktree remains
+on its feature branch. Origin main was refreshed before publication. The PR
+covers source selection and authorization selection with the validation results
+above; installation and merge are outside this checkpoint.
+
+Published PR #72: https://github.com/thomashartm/motley/pull/72
+Implementation commit: `98dca90`. The branch rebased cleanly onto current main
+(`5507bed`). After rebase, affected agent/worktree/member/TUI suites, terminal
+spawn flows, blueprint launch/resume, authorization argument tests, vet and
+CI-pinned lint all passed. Hosted CI is pending; no merge or installation.

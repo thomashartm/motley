@@ -30,10 +30,28 @@ var claudeModes = []Mode{
 	{"sandbox", "accept edits; Bash confined to the worktree", []string{"--permission-mode", "acceptEdits", "--settings", claudeSandbox}},
 }
 
+// These match the local start-codex permission menu and native CLI options.
+var codexModes = []Mode{
+	{"read-only", "read-only sandbox; ask before escalation", []string{"--sandbox", "read-only", "--ask-for-approval", "on-request"}},
+	{"auto", "workspace edits and commands; ask before escalation", []string{"--sandbox", "workspace-write", "--ask-for-approval", "on-request"}},
+	{"approve-for-me", "workspace sandbox; automatically review escalations", []string{"--approve-for-me"}},
+	{"full-access", "unrestricted files and network; no approval prompts", []string{"--sandbox", "danger-full-access", "--ask-for-approval", "never"}},
+	{"bypass", "disable sandbox and all approval prompts", []string{"--dangerously-bypass-approvals-and-sandbox"}},
+}
+
+var opencodeModes = []Mode{
+	{"auto", "approve permissions unless explicitly denied", []string{"--auto"}},
+}
+
 // Modes lists an agent's presets; agents without presets return nil.
 func Modes(agent string) []Mode {
-	if agent == "claude" {
+	switch agent {
+	case "claude":
 		return claudeModes
+	case "codex":
+		return codexModes
+	case "opencode":
+		return opencodeModes
 	}
 	return nil
 }
@@ -50,7 +68,7 @@ func ModeNames(agent string) string {
 func ModeArgs(agent, name string) ([]string, error) {
 	modes := Modes(agent)
 	if len(modes) == 0 {
-		return nil, fmt.Errorf("modes are available for claude only, not %s", agent)
+		return nil, fmt.Errorf("no authorization levels are available for %s", agent)
 	}
 	for _, m := range modes {
 		if m.Name == name {
@@ -63,8 +81,27 @@ func ModeArgs(agent, name string) ([]string, error) {
 // ConflictingArg returns the first option in args that mode would also set, so
 // a blueprint and a mode never both decide how permissions work.
 func ConflictingArg(args, mode []string) string {
+	codexMode := false
+	for _, arg := range mode {
+		switch arg {
+		case "--sandbox", "--ask-for-approval", "--approve-for-me", "--dangerously-bypass-approvals-and-sandbox":
+			codexMode = true
+		}
+	}
 	for _, arg := range args {
 		option, _, _ := strings.Cut(arg, "=")
+		if codexMode {
+			switch option {
+			case "-s", "--sandbox", "-a", "--ask-for-approval", "--approve-for-me", "--full-auto", "--dangerously-bypass-approvals-and-sandbox":
+				return option
+			case "-c", "--config", "-p", "--profile":
+				// Profiles/config may contain permissions that override CLI presets.
+				return option
+			}
+			if strings.HasPrefix(option, "-c") || strings.HasPrefix(option, "-s") || strings.HasPrefix(option, "-a") || strings.HasPrefix(option, "-p") {
+				return option
+			}
+		}
 		if option == "--dangerously-skip-permissions" {
 			return option
 		}

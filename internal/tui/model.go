@@ -105,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.mouse(msg)
 	case importLoaded, importDone:
 		return m.importMessage(msg)
-	case spawnLoaded, spawnPrepared, spawnProgress, spawnFinished, promptEdited, issueLooked:
+	case spawnLoaded, spawnSourcesLoaded, spawnPrepared, spawnProgress, spawnFinished, promptEdited, issueLooked:
 		return m.spawnMessage(msg)
 	case tick:
 		return m, m.poll

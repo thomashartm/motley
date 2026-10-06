@@ -75,6 +75,10 @@ func TestReplyAndSendIntegration(t *testing.T) {
 func TestSpawnFormTerminal(t *testing.T) {
 	bin := buildLifecycleBinary(t)
 	f := newMemberFixture(t, bin, "main")
+	f.git(f.repo, "checkout", "-b", "feature/parent")
+	f.git(f.repo, "commit", "--allow-empty", "-m", "Unpushed parent")
+	sourceCommit := f.git(f.repo, "rev-parse", "HEAD")
+	f.git(f.repo, "checkout", "main")
 	// The editor replaces only prompt text, leaving its schema comment intact.
 	editor := filepath.Join(f.home, "prompt editor")
 	writeFixture(t, editor, "#!/bin/sh\nprintf '<!-- schema = 1 -->\\nEdited prompt from terminal\\n' > \"$1\"\n", 0755)
@@ -94,10 +98,11 @@ func TestSpawnFormTerminal(t *testing.T) {
 	}
 	eventually(t, func() bool { return strings.Contains(terminal.text(), "No members yet") })
 	send("s", "> api")
-	send("api\r", "Ticket and name")
+	send("api\r", "Source branch")
+	send("feature/parent\r", "Ticket and name")
 	send("412\tFX cache\r", "Agent")
 	send("\r", "Blueprint")
-	send("\r", "Permission mode") // none: an edited prompt still works without a blueprint
+	send("\r", "Authorization level") // none: an edited prompt still works without a blueprint
 	send("j", "> manual")
 	send("j", "> acceptEdits")
 	send("j", "> plan")
@@ -107,6 +112,9 @@ func TestSpawnFormTerminal(t *testing.T) {
 	m := f.manifest("412-fx-cache")
 	if !m.Prompt || m.Blueprint != "" || m.Branch != "feature/api-412-fx-cache" || m.Mode != "plan" {
 		t.Fatal(m)
+	}
+	if m.Base != "feature/parent" || f.git(m.Worktree, "rev-parse", "HEAD") != sourceCommit {
+		t.Fatal("spawn ignored the selected source", m.Base)
 	}
 	eventually(t, func() bool {
 		data, _ := os.ReadFile(filepath.Join(f.home, "received-prompt"))

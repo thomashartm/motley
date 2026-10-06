@@ -242,6 +242,10 @@ func TestGlobalTemplatesRemainAvailableDuringSpawn(t *testing.T) {
 	}
 	m = arrow(m, tea.KeyDown)
 	m = arrow(m, tea.KeyEnter)
+	if m.spawn.step != modeStep {
+		t.Fatal("missing authorization selector")
+	}
+	m = arrow(m, tea.KeyEnter)
 	m = update(m, key("Deliver the feature"))
 	next, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = next.(Model)

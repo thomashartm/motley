@@ -5,12 +5,15 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/thomashartm/motley/internal/worktree"
 )
 
 func TestSpawnRepositoryBranchPrefix(t *testing.T) {
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 140, Height: 40})
 	m.github = nil
 	m.spawn = &spawnForm{repos: []string{"/Users/thomas/projects/aderis/backend"}, query: inputs("")[0]}
+	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	m = update(m, spawnSourcesLoaded{sources: []worktree.SourceBranch{{Ref: "refs/heads/develop", Name: "develop"}}})
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if got := m.spawn.fields[3].Value(); got != "feature/backend-" {
 		t.Fatal(got)

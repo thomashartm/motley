@@ -11,6 +11,7 @@ import (
 	"github.com/thomashartm/motley/internal/blueprint"
 	"github.com/thomashartm/motley/internal/member"
 	"github.com/thomashartm/motley/internal/tmux"
+	"github.com/thomashartm/motley/internal/worktree"
 )
 
 func TestFilterPreservesSelectionAndRefresh(t *testing.T) {
@@ -79,9 +80,11 @@ func TestSpawnFormValidationAndPreview(t *testing.T) {
 		t.Fatal("repo fuzzy filter")
 	}
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
-	if m.spawn.opts.Repo != "billing-service" || m.spawn.step != identityStep {
+	if m.spawn.opts.Repo != "billing-service" || !m.busy {
 		t.Fatal("repo selection")
 	}
+	m = update(m, spawnSourcesLoaded{sources: []worktree.SourceBranch{{Ref: "refs/heads/develop", Name: "develop"}}})
+	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if m.spawn.step != identityStep || m.spawn.err == "" {
 		t.Fatal("empty name allowed")
@@ -104,6 +107,10 @@ func TestSpawnFormValidationAndPreview(t *testing.T) {
 	}
 	m = update(m, spawnLoaded{forBlueprint: true, blueprints: []blueprint.Blueprint{{Name: "plan", Agent: "codex", Vars: []string{"constraints"}}}})
 	m = update(m, key("j"))
+	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+	if m.spawn.step != modeStep {
+		t.Fatal("authorization not requested before variables")
+	}
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if m.spawn.step != varsStep || m.spawn.opts.Blueprint != "plan" {
 		t.Fatal("blueprint vars")
@@ -182,7 +189,7 @@ func TestSpawnFormPermissionMode(t *testing.T) {
 		t.Fatal("mode step not offered")
 	}
 	view := m.View()
-	for _, want := range []string{"Permission mode", "default from claude settings", "sandbox — accept edits"} {
+	for _, want := range []string{"Authorization level", "Use blueprint / agent settings", "sandbox — accept edits"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("mode view lacks %q:\n%s", want, view)
 		}
@@ -200,8 +207,18 @@ func TestSpawnFormPermissionMode(t *testing.T) {
 	if m, cmd = choose(t, m, 0); cmd == nil || m.spawn.opts.Mode != "" {
 		t.Fatalf("settings default: %+v", m.spawn.opts)
 	}
-	// A blueprint that already sets the permission mode skips the step.
-	if m, cmd = choose(t, atBlueprints(t), 1); cmd == nil || m.spawn.step == modeStep || m.spawn.opts.Mode != "" {
-		t.Fatal("blueprint permission mode was overridable")
+	// A blueprint also requires explicit permission confirmation.
+	m, cmd = choose(t, atBlueprints(t), 1)
+	if cmd != nil || m.spawn.step != modeStep || !strings.Contains(m.spawnView(20), "Use blueprint permissions: --permission-mode=plan") {
+		t.Fatal("blueprint skipped authorization selection")
+	}
+	m, cmd = choose(t, m, 1)
+	if cmd != nil || m.spawn.step != modeStep || m.spawn.err == "" {
+		t.Fatal("conflicting authorization accepted")
+	}
+	m.spawn.choice = 0
+	m, cmd = choose(t, m, 0)
+	if cmd == nil || m.spawn.opts.Mode != "" {
+		t.Fatal("blueprint authorization could not be confirmed")
 	}
 }

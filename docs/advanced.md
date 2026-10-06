@@ -27,7 +27,13 @@ repository as `name (full path)`. Long paths wrap. If names repeat across roots,
 choose explicitly in the CLI: `--repo ~/projects/aderis/api`. Repeated paths
 to the same physical repository appear only once. All entrypoints must be readable.
 
-In the spawn form, branch suggestions use `feature/<repo>-<ticket>-<name>`.
+The spawn form asks for a **Source branch** after repository selection. The
+default branch appears first, followed by unprefixed names such as `develop`,
+then other branches. Type to filter all local and fetched remote branches.
+Local selections include unpushed commits; remote selections fetch that branch
+before creating the worktree. The preview shows the chosen source.
+
+New branch suggestions use `feature/<repo>-<ticket>-<name>`.
 The ticket is optional; a pasted GitHub issue URL contributes only its issue
 number. Tab to **Branch type** and use **←/→** to choose **feature** or **fix**.
 The **Branch** field remains editable.
@@ -119,21 +125,39 @@ otherwise its milestone, suggests a crew. Choose the suggested crew in the spawn
 form or pass `--create-crew`. Existing crews with a matching URL are reused.
 Explicit ticket URLs can point to other trackers.
 
-## Claude permission modes
+## Authorization levels
 
-Choose a mode in the spawn form or pass `--mode`:
+The spawn form always asks for an **Authorization level** before launch.
+Select a preset or explicitly keep the agent/blueprint settings. Blueprints
+that set permissions require confirmation too; conflicting presets are rejected.
+The selected preset is saved and reused when reviving the member.
+
+From the CLI, pass `--mode`:
 
 ```sh
 mtly spawn --repo api --branch feat/example --mode sandbox
 ```
 
-Available modes: `manual`, `acceptEdits`, `plan`, `auto`, `dontAsk`,
+Claude modes: `manual`, `acceptEdits`, `plan`, `auto`, `dontAsk`,
 `bypassPermissions`, `sandbox`. Without a mode, Claude uses its configured default.
 A blueprint that sets a permission mode cannot also use `--mode`.
 
 `sandbox` accepts edits and confines Bash to the worktree and temporary files.
 Linux requires `bubblewrap` and `socat`; launch fails if sandboxing is unavailable.
 Claude can still request permission to run a command outside the sandbox.
+
+Codex offers the same levels as the `start-codex` launcher:
+
+| Level | Behavior |
+| --- | --- |
+| `read-only` | Read-only sandbox; ask before escalation. |
+| `auto` | Workspace writes; ask before escalation. |
+| `approve-for-me` | Workspace sandbox; automatically review escalations. |
+| `full-access` | Unrestricted filesystem and network; no approval prompts. |
+| `bypass` | Disable sandboxing and approval prompts. |
+
+OpenCode offers its configured permissions or `auto`, which approves requests
+unless they are explicitly denied by its configuration.
 
 ## Blueprints
 

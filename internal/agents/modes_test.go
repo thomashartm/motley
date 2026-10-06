@@ -39,8 +39,50 @@ func TestModeArgsRefusesUnknownSelections(t *testing.T) {
 		}
 	}
 	for _, agent := range []string{"codex", "opencode"} {
-		if _, err := ModeArgs(agent, "plan"); err == nil || !strings.Contains(err.Error(), "claude only") {
+		if _, err := ModeArgs(agent, "plan"); err == nil || !strings.Contains(err.Error(), "unknown "+agent+" mode") {
 			t.Fatalf("%s: %v", agent, err)
+		}
+	}
+}
+
+func TestCodexAndOpenCodeAuthorizationArgs(t *testing.T) {
+	for name, want := range map[string][]string{
+		"read-only":      {"--sandbox", "read-only", "--ask-for-approval", "on-request"},
+		"auto":           {"--sandbox", "workspace-write", "--ask-for-approval", "on-request"},
+		"approve-for-me": {"--approve-for-me"},
+		"full-access":    {"--sandbox", "danger-full-access", "--ask-for-approval", "never"},
+		"bypass":         {"--dangerously-bypass-approvals-and-sandbox"},
+	} {
+		got, err := ModeArgs("codex", name)
+		if err != nil || !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s: %v %v", name, got, err)
+		}
+		// Permission options must survive both fresh launch and resume.
+		if got := StartArgv("codex", got, ""); !reflect.DeepEqual(got, append(append([]string{"codex"}, want...), "--no-daemon")) {
+			t.Fatal(got)
+		}
+		if got := ResumeArgv("codex", want, "session"); !reflect.DeepEqual(got, append(append([]string{"codex", "resume"}, want...), "--no-daemon", "--", "session")) {
+			t.Fatal(got)
+		}
+	}
+	if got, err := ModeArgs("opencode", "auto"); err != nil || !reflect.DeepEqual(got, []string{"--auto"}) {
+		t.Fatal(got, err)
+	}
+}
+
+func TestCodexAuthorizationConflicts(t *testing.T) {
+	for _, mode := range Modes("codex") {
+		for _, args := range [][]string{
+			{"--sandbox=read-only"}, {"-s", "read-only"}, {"--ask-for-approval", "never"},
+			{"--approve-for-me"}, {"--dangerously-bypass-approvals-and-sandbox"},
+			{"--full-auto"}, {"-c", "approval_policy='never'"}, {"--profile", "unsafe"},
+		} {
+			if ConflictingArg(args, mode.Args) == "" {
+				t.Fatalf("missed conflict: %v + %v", args, mode.Args)
+			}
+		}
+		if conflict := ConflictingArg([]string{"--model", "fixture"}, mode.Args); conflict != "" {
+			t.Fatal(conflict)
 		}
 	}
 }
