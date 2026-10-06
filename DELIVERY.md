@@ -1842,3 +1842,7 @@ and all three real-terminal entry routes (Add existing, Details click, Shift+S)
 passed in that checkout. Vet and CI-pinned lint passed. Origin main was refreshed
 and remains the branch base. The user requested a PR after this verification;
 publication includes only this fix and its documentation/tests.
+
+Published PR #69: https://github.com/thomashartm/motley/pull/69
+Implementation commit: `7f9b04d`. The final four-platform builds also passed.
+Hosted CI is running; no merge or hosted-test success is claimed yet.
