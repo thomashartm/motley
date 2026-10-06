@@ -1963,3 +1963,9 @@ Publication requested. Repository rules rechecked; the linked worktree remains
 on its feature branch. Origin main was refreshed before publication. The PR
 covers source selection and authorization selection with the validation results
 above; installation and merge are outside this checkpoint.
+
+Published PR #72: https://github.com/thomashartm/motley/pull/72
+Implementation commit: `98dca90`. The branch rebased cleanly onto current main
+(`5507bed`). After rebase, affected agent/worktree/member/TUI suites, terminal
+spawn flows, blueprint launch/resume, authorization argument tests, vet and
+CI-pinned lint all passed. Hosted CI is pending; no merge or installation.
