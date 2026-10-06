@@ -238,5 +238,5 @@ func TestSwitchTrackedClaudeAndSubagentReporting(t *testing.T) {
 	f.report("", fmt.Sprintf(`{"session_id":%q,"cwd":%q,"hook_event_name":"Stop"}`, sid, f.repo))
 	report(`"hook_event_name":"SubagentStop","agent_id":"reviewer"`, "idle")
 	report(`"hook_event_name":"Stop","last_assistant_message":"Done"`, "ready")
-	f.refused("import", next, "--replace", id)
+	f.motley("import", next, "--replace", id)
 }

@@ -1846,3 +1846,28 @@ publication includes only this fix and its documentation/tests.
 Published PR #69: https://github.com/thomashartm/motley/pull/69
 Implementation commit: `7f9b04d`. The final four-platform builds also passed.
 Hosted CI is running; no merge or hosted-test success is claimed yet.
+
+## Keep Claude reimport visible after recovery — 2026-10-06
+
+Repository rules rechecked; work stays in the primary checkout on the feature
+branch `fix/always-show-claude-reimport`, based on merged PR #69 (`8ae2286`).
+Untracked tasks are preserved. Read-only live inspection found that backend-62,
+now named 3088-rate-limiter, already had the correct workspace and working status.
+The previous UI hid Reimport whenever the status was not moved. Its Details
+renderer also replaced the action header when showing an activity summary.
+
+Reimport session (S) is now consistently available in Details and Actions for
+imported Claude members. Activity summaries retain the action header. The picker
+offers the live primary conversation even if its directory is unchanged, while
+normal Add existing discovery still excludes unchanged registered sessions.
+Refreshing an unchanged binding preserves its owned tmux terminal, process,
+member identity and matching PR cache. A moved binding still releases stale
+terminal ownership. Empty pickers explain how to start or revive a session.
+
+Validation: full TUI suite, focused import/switch/group lifecycle tests and all
+reimport tests passed. New coverage checks working/moved/dead Details with an
+activity summary, mouse targets across sizes, repeated unchanged reimport without
+releasing the terminal, and a real-terminal click for an unchanged conversation.
+Vet, CI-pinned lint, native build and four-platform builds passed. No live member
+was reimported or terminated during validation. Publication follows separately
+because PR #69 has already merged.

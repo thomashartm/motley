@@ -196,12 +196,16 @@ func realPath(t *testing.T, path string) string {
 
 func TestReimportClaudePickerTerminal(t *testing.T) {
 	bin := buildLifecycleBinary(t)
-	for _, route := range []string{"add", "details", "shortcut"} {
+	for _, route := range []string{"add", "details", "shortcut", "unchanged"} {
 		t.Run(route, func(t *testing.T) {
 			f := newMemberFixture(t, bin, "main")
 			sid, process := fakeExternalClaude(t, f, f.repo)
 			f.motley("import", sid, "--name", "Keep my name")
-			data, _ := json.Marshal([]claude.Session{{SessionID: sid, PID: process.Process.Pid, Cwd: f.home, Kind: "interactive", Status: "busy", Name: "Moved Claude"}})
+			cwd := f.home
+			if route == "unchanged" {
+				cwd = f.repo
+			}
+			data, _ := json.Marshal([]claude.Session{{SessionID: sid, PID: process.Process.Pid, Cwd: cwd, Kind: "interactive", Status: "busy", Name: "Moved Claude"}})
 			writeFixture(t, filepath.Join(f.home, "sessions.json"), string(data), 0600)
 			terminal := startTerminal(t, exec.Command(bin, "--monitor"))
 			eventually(t, func() bool { return strings.Contains(terminal.text(), "[Reimport session (S)]") })
@@ -210,7 +214,7 @@ func TestReimportClaudePickerTerminal(t *testing.T) {
 				terminal.send(t, "a")
 				eventually(t, func() bool { return strings.Contains(terminal.text(), "Add existing agent") })
 				terminal.send(t, "\r")
-			case "details":
+			case "details", "unchanged":
 				terminal.send(t, "2")
 				// Actual 120x30 terminal: click the visible Details control.
 				terminal.send(t, "\x1b[<0;66;6M\x1b[<0;66;6m")
@@ -224,9 +228,44 @@ func TestReimportClaudePickerTerminal(t *testing.T) {
 			terminal.send(t, "\r")
 			eventually(t, func() bool { return strings.Contains(terminal.text(), "Reimported Keep my name") })
 			rows, err := member.List()
-			if err != nil || len(rows) != 1 || rows[0].Worktree != realPath(t, f.home) || !rows[0].Alive {
+			if err != nil || len(rows) != 1 || rows[0].Worktree != realPath(t, cwd) || !rows[0].Alive {
 				t.Fatal(rows, err)
 			}
 		})
+	}
+}
+
+func TestReimportUnchangedClaudeKeepsTerminal(t *testing.T) {
+	f := newMemberFixture(t, buildLifecycleBinary(t), "main")
+	sid, process := fakeExternalClaude(t, f, f.repo)
+	f.motley("import", sid, "--name", "Keep my name")
+	id := "claude-" + sid
+	dir := filepath.Join(f.state, "motley/members")
+	before, err := member.Load(dir, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.tmux("new-session", "-d", "-s", id, "/bin/sh")
+	f.tmux("set-option", "-t", "="+id+":", "@motley_member", id)
+	pane := f.tmux("display-message", "-p", "-t", "="+id+":", "#{pane_id}|#{pane_pid}")
+	for i := 0; i < 2; i++ {
+		candidates, err := member.ReplacementSessions(id)
+		if err != nil || len(candidates) != 1 || candidates[0].SessionID != sid || candidates[0].ReimportID != id {
+			t.Fatal("current session unavailable", candidates, err)
+		}
+		f.motley("import", sid, "--replace", id)
+		after, err := member.Load(dir, id)
+		if err != nil || after.Name != before.Name || after.Worktree != before.Worktree || !after.CreatedAt.Equal(before.CreatedAt) {
+			t.Fatal(after, err)
+		}
+		if got := f.tmux("display-message", "-p", "-t", "="+id+":", "#{pane_id}|#{pane_pid}"); got != pane {
+			t.Fatal("refresh replaced terminal", got)
+		}
+		if err := process.Process.Signal(syscall.Signal(0)); err != nil {
+			t.Fatal("refresh stopped conversation", err)
+		}
+	}
+	if got := f.motley("import", "--list"); strings.Contains(got, sid) {
+		t.Fatal("unchanged session offered as a new import", got)
 	}
 }

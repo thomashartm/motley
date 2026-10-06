@@ -106,11 +106,11 @@ func (m Model) memberDetails() string {
 	if r.Blueprint != "" {
 		fields = append(fields, detailField{"Blueprint", clean(r.Blueprint)})
 	}
-	body := fit(title, width) + "\n"
+	header := fit(title, width) + "\n"
 	if action := m.reimportDetailAction(); action != "" {
-		body += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Render(action) + "\n"
+		header += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Render(action) + "\n"
 	}
-	body += detailFields(fields, width)
+	body := header + detailFields(fields, width)
 	if m.event.Status == status {
 		text := m.event.Summary
 		switch status {
@@ -127,7 +127,7 @@ func (m Model) memberDetails() string {
 			if len(r.ClaudeSessions) > 0 {
 				text = "Conversation " + m.event.AgentSessionID + "\n" + text
 			}
-			body = fit(title, width) + "\n" + ansi.Wrap(multiline(text), width, "") + "\n\n" + panelDivider(width) + "\n\n" + detailFields(fields, width)
+			body = header + ansi.Wrap(multiline(text), width, "") + "\n\n" + panelDivider(width) + "\n\n" + detailFields(fields, width)
 		}
 	}
 	section := func(label string, fields []detailField) {
@@ -163,7 +163,7 @@ func (m Model) memberDetails() string {
 // Keep the recovery control above the fields so it remains visible in small
 // terminals. Mouse handling uses this same label and viewport row.
 func (m Model) reimportDetailAction() string {
-	if m.selectedRow().ClaudeSession != "" && m.selectedRow().CurrentStatus() == "moved" {
+	if m.selectedRow().ClaudeSession != "" {
 		return "[Reimport session (S)]"
 	}
 	return ""
