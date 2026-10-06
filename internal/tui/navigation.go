@@ -38,7 +38,11 @@ func (m Model) actions() []navigationAction {
 		add("Member", "Edit member (e)", "e", "Opens an editor for the member's name, ticket, crew and colour. Changes apply when you save.", false)
 		if m.selectedRow().ClaudeSession != "" {
 			add("Member", "Track another session (A)", "A", "Track another foreground or background Claude conversation alongside this member. Shows their combined status; both conversations keep running.", false)
-			add("Member", "Switch tracked session (S)", "S", "Choose the primary Claude conversation for Open. A single tracked session is replaced; linked conversations stay monitored. Keeps the name and crew, and releases the former terminal without stopping it.", false)
+			label := "Switch tracked session (S)"
+			if m.selectedRow().CurrentStatus() == "moved" {
+				label = "Reimport session (S)"
+			}
+			add("Member", label, "S", "Reimport a moved session into its current workspace, or choose the primary Claude conversation for Open. A single tracked session is replaced; linked conversations stay monitored. Keeps the name and crew, and releases the former terminal without stopping it.", false)
 		}
 		add("Member", "Open in browser (b)", "b", "Choose the branch, compare view, issue, PR or crew link to open in your browser. Only links that exist are offered.", false)
 		if onGitHub(m.selectedRow()) {

@@ -34,6 +34,8 @@ func statusIcon(status string) (string, lipgloss.Color) {
 	switch status {
 	case "permission":
 		return "⚠", lipgloss.Color("1")
+	case "moved":
+		return "↪", lipgloss.Color("3")
 	case "question":
 		return "?", lipgloss.Color("3")
 	case "ready":
@@ -94,7 +96,7 @@ func totals(rows []member.Row) string {
 		counts[s]++
 	}
 	var parts []string
-	for _, s := range []string{"permission", "question", "ready", "idle", "working", "ended", "dead", "alive"} {
+	for _, s := range []string{"moved", "permission", "question", "ready", "idle", "working", "ended", "dead", "alive"} {
 		if counts[s] == 0 {
 			continue
 		}

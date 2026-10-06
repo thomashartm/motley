@@ -28,6 +28,10 @@ func (m Model) importRows(height int) []importRow {
 	if d.additional {
 		title = "Track another session"
 	}
+	reimporting := len(d.sessions) > 0 && d.sessions[d.cursor].ReimportID != ""
+	if reimporting && d.replaceID != "" {
+		title = "Reimport session"
+	}
 	count := fmt.Sprintf("%d/%d", min(d.cursor+1, len(d.sessions)), len(d.sessions))
 	header := cell(title, max(1, width-len(count)-1)) + " " + count
 	rows := []importRow{{fit(header, width), -1}}
@@ -42,7 +46,11 @@ func (m Model) importRows(height int) []importRow {
 		return rows[:min(len(rows), height)]
 	}
 	if d.replaceID != "" && height >= 8 {
-		rows = append(rows, importRow{fit("Both sessions keep running.", width), -1})
+		message := "Both sessions keep running."
+		if reimporting {
+			message = "Updates workspace; session keeps running."
+		}
+		rows = append(rows, importRow{fit(message, width), -1})
 	}
 	available := height - len(rows)
 	titleLines := 1
@@ -83,6 +91,9 @@ func importCard(s member.ImportCandidate, width, titleLines int, selected bool) 
 	name := strings.TrimSpace(clean(s.Name))
 	if name == "" {
 		name = "Untitled session"
+	}
+	if s.ReimportID != "" {
+		name = "Reimport: " + name
 	}
 	title := strings.Split(ansi.Wrap(name, bodyWidth, ""), "\n")
 	if len(title) > titleLines {

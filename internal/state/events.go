@@ -123,7 +123,7 @@ func LatestEvent(path string) (Event, error) {
 }
 
 func Attention(status string) bool {
-	return status == "permission" || status == "question" || status == "ready" || status == "idle"
+	return status == "moved" || status == "permission" || status == "question" || status == "ready" || status == "idle"
 }
 func ValidStatus(status string) bool {
 	switch status {

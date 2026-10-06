@@ -32,9 +32,9 @@ func (m Manifest) ClaudeActivityPath(dir, sessionID string) string {
 }
 
 type ClaudeSessionStatus struct {
-	Managed                bool
-	ID, Name, Kind, Status string
-	Alive                  bool
+	Managed                     bool
+	ID, Name, Kind, Status, Cwd string
+	Alive                       bool
 }
 
 func (s ClaudeSessionStatus) Access() string {
@@ -118,11 +118,15 @@ func (r *Row) refreshClaudeSessions(dir string, sessions []claude.Session) error
 			since = primarySince
 		}
 		for _, s := range sessions {
-			if s.SessionID != id || !sameDirectory(s.Cwd, r.Worktree) {
+			if s.SessionID != id || (id != r.ClaudeSession && !sameDirectory(s.Cwd, r.Worktree)) {
 				continue
 			}
-			entry.Name, entry.Kind, entry.Alive = s.Name, s.Kind, s.PID > 0
+			entry.Name, entry.Kind, entry.Alive, entry.Cwd = s.Name, s.Kind, s.PID > 0, s.Cwd
 			entry.Status = "dead"
+			if entry.Alive && !sameDirectory(s.Cwd, r.Worktree) {
+				entry.Status = "moved"
+				break
+			}
 			if entry.Alive {
 				activity, err := claude.ReadActivity(r.ClaudeActivityPath(dir, id))
 				if err == nil && activity.SessionID == "" {
@@ -145,7 +149,7 @@ func (r *Row) refreshClaudeSessions(dir string, sessions []claude.Session) error
 }
 
 func claudeStatusPriority(status string) int {
-	for priority, candidate := range strings.Fields("dead ended idle alive ready starting working question permission") {
+	for priority, candidate := range strings.Fields("dead ended idle alive ready starting working question permission moved") {
 		if candidate == status {
 			return priority
 		}

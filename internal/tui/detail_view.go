@@ -87,6 +87,9 @@ func (m Model) memberDetails() string {
 			label = "Session"
 		}
 		fields = append(fields, detailField{label, clean(s.Status + " · " + accessDescription(s.Access()) + " · " + s.Name + " · " + s.ID)})
+		if s.Status == "moved" {
+			fields = append(fields, detailField{"New workspace", clean(s.Cwd)}, detailField{"Recovery", "Select Reimport session (S) to update this member."})
+		}
 	}
 	if c := m.crewFor(r.Crew); c.Gig != "" {
 		fields = append(fields, detailField{"Gig", clean(c.Gig)})
@@ -103,7 +106,11 @@ func (m Model) memberDetails() string {
 	if r.Blueprint != "" {
 		fields = append(fields, detailField{"Blueprint", clean(r.Blueprint)})
 	}
-	body := fit(title, width) + "\n" + detailFields(fields, width)
+	body := fit(title, width) + "\n"
+	if action := m.reimportDetailAction(); action != "" {
+		body += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Render(action) + "\n"
+	}
+	body += detailFields(fields, width)
 	if m.event.Status == status {
 		text := m.event.Summary
 		switch status {
@@ -151,4 +158,13 @@ func (m Model) memberDetails() string {
 	section("Session", session)
 
 	return body
+}
+
+// Keep the recovery control above the fields so it remains visible in small
+// terminals. Mouse handling uses this same label and viewport row.
+func (m Model) reimportDetailAction() string {
+	if m.selectedRow().ClaudeSession != "" && m.selectedRow().CurrentStatus() == "moved" {
+		return "[Reimport session (S)]"
+	}
+	return ""
 }

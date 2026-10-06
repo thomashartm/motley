@@ -13,10 +13,8 @@ import (
 	"github.com/thomashartm/motley/internal/agents/claude"
 	"github.com/thomashartm/motley/internal/agents/codex"
 	"github.com/thomashartm/motley/internal/crew"
-	"github.com/thomashartm/motley/internal/gitx"
 	"github.com/thomashartm/motley/internal/state"
 	"github.com/thomashartm/motley/internal/tmux"
-	"github.com/thomashartm/motley/internal/worktree"
 )
 
 func DiscoverClaude() ([]claude.Session, error) {
@@ -37,11 +35,22 @@ func DiscoverClaude() ([]claude.Session, error) {
 		if s.PID <= 0 {
 			continue
 		}
-		managed := false
+		managed, tracked := false, false
+		// An explicit conversation binding takes precedence over the fallback
+		// that hides sessions in a spawned member's checkout.
 		for _, m := range members {
-			if m.Agent == "claude" && (m.TracksClaude(s.SessionID) || (m.ClaudeSession == "" && sameDirectory(m.Worktree, s.Cwd))) {
-				managed = true
+			if m.Agent == "claude" && m.TracksClaude(s.SessionID) {
+				tracked = true
+				managed = s.SessionID != m.ClaudeSession || sameDirectory(m.Worktree, s.Cwd)
 				break
+			}
+		}
+		if !tracked {
+			for _, m := range members {
+				if m.Agent == "claude" && m.ClaudeSession == "" && sameDirectory(m.Worktree, s.Cwd) {
+					managed = true
+					break
+				}
 			}
 		}
 		if !managed {
@@ -83,12 +92,15 @@ func Import(agent, sessionID, name, crewID string) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("the %s session %s is no longer available or is already in Motley", agent, sessionID)
 	}
 	s := *selected
-	cwd, err := worktree.Physical(s.Cwd)
-	if err != nil {
-		return Manifest{}, err
-	}
-	if info, err := os.Stat(cwd); err != nil || !info.IsDir() {
-		return Manifest{}, fmt.Errorf("session directory is unavailable: %s", cwd)
+	if s.ReimportID != "" {
+		if name != "" || crewID != "" {
+			return Manifest{}, fmt.Errorf("reimport preserves the member's name and crew; use Edit member to change them")
+		}
+		m, err := Load(dir, s.ReimportID)
+		if err != nil {
+			return Manifest{}, err
+		}
+		return m.reimportClaude(dir, s)
 	}
 	crews, err := crew.Load()
 	if err != nil {
@@ -101,28 +113,19 @@ func Import(agent, sessionID, name, crewID string) (Manifest, error) {
 		name = s.Name
 	}
 	if strings.TrimSpace(name) == "" {
-		name = filepath.Base(cwd)
-	}
-	// Git metadata is optional. Existing sessions may run outside a repo.
-	repo := ""
-	branch, base, remote := "", "", ""
-	if rows, e := gitx.Worktrees(cwd); e == nil && len(rows) > 0 {
-		repo = rows[0].Path
-		branch, _ = gitx.Output(cwd, "symbolic-ref", "--short", "HEAD")
-		base, _ = worktree.Base(repo)
-		remote, _ = gitx.Output(repo, "remote", "get-url", "origin")
+		name = filepath.Base(s.Cwd)
 	}
 	id := agent + "-" + sessionID
 	if _, err := os.Lstat(filepath.Join(dir, id+".toml")); !os.IsNotExist(err) {
 		return Manifest{}, fmt.Errorf("member %s already exists", id)
 	}
-	m := Manifest{Schema: 1, ID: id, Name: name, Repo: filepath.Base(cwd), RepoPath: repo, Worktree: cwd, Branch: branch, Base: base, RemoteURL: remote, Agent: agent, Crew: crewID, CreatedAt: time.Now().UTC()}
+	m := Manifest{Schema: 1, ID: id, Name: name, Agent: agent, Crew: crewID, CreatedAt: time.Now().UTC()}
 	if agent == "codex" {
 		m.CodexSession, m.CodexSocket = sessionID, s.Socket
 	} else {
 		m.ClaudeSession = sessionID
 	}
-	if err := m.CheckCheckout(); err != nil {
+	if err := m.setImportedWorkspace(s.Cwd); err != nil {
 		return Manifest{}, err
 	}
 	if err := saveManifest(dir, m); err != nil {
@@ -196,7 +199,7 @@ func externalSession(m Manifest) (*claude.Session, error) {
 	for _, s := range sessions {
 		if s.SessionID == m.ClaudeSession && s.PID > 0 {
 			if !sameDirectory(s.Cwd, m.Worktree) {
-				return nil, fmt.Errorf("the Claude session directory changed; import it again")
+				return nil, fmt.Errorf("the Claude session directory changed to %s; select Reimport session (S), or run mtly import %s --replace %s", s.Cwd, s.SessionID, m.ID)
 			}
 			return &s, nil
 		}
@@ -308,7 +311,11 @@ func sameDirectory(a, b string) bool {
 }
 
 // ImportCandidate is the common CLI/TUI representation; control stays agent-specific.
-type ImportCandidate struct{ Agent, SessionID, Name, Cwd, Status, Socket, Kind string }
+type ImportCandidate struct {
+	Agent, SessionID, Name, Cwd, Status, Socket, Kind string
+	// ReimportID identifies the existing member whose primary session moved.
+	ReimportID string
+}
 
 func DiscoverImports(agent string) ([]ImportCandidate, error) {
 	var candidates []ImportCandidate
@@ -318,8 +325,23 @@ func DiscoverImports(agent string) ([]ImportCandidate, error) {
 		if err != nil {
 			return nil, err
 		}
+		dir, err := state.MembersDir()
+		if err != nil {
+			return nil, err
+		}
+		members, err := loadAll(dir)
+		if err != nil {
+			return nil, err
+		}
 		for _, s := range sessions {
-			candidates = append(candidates, ImportCandidate{Agent: agent, SessionID: s.SessionID, Name: s.Name, Cwd: s.Cwd, Status: s.MotleyStatus(), Kind: s.Kind})
+			candidate := ImportCandidate{Agent: agent, SessionID: s.SessionID, Name: s.Name, Cwd: s.Cwd, Status: s.MotleyStatus(), Kind: s.Kind}
+			for _, m := range members {
+				if m.ClaudeSession == s.SessionID {
+					candidate.ReimportID = m.ID
+					break
+				}
+			}
+			candidates = append(candidates, candidate)
 		}
 	case "codex":
 		sessions, err := codex.Sessions("")

@@ -1752,3 +1752,93 @@ that unchanged test passed three consecutive focused retries. Termination tests
 passed in both full runs. Vet, CI-pinned lint (0 issues), installer/uninstaller,
 OpenCode plugin tests and all four platform builds passed. Publishing this
 follow-up separately because PR #66 is already merged.
+
+## Reimport Claude after a workspace change — 2026-10-06
+
+Repository rules checked: Git/gh CLI, main only in the primary checkout, delivery
+notes here. Implementation uses `fix/claude-workspace-reimport` in a separate
+feature worktree; the primary checkout's untracked tasks are preserved.
+
+Diagnosis: discovery hid a registered conversation by session ID even after its
+workspace changed. Refresh showed it dead, while Revive, Terminate and Retire
+refused the mismatched directory. The existing replacement picker only offered
+other conversations in the old checkout, making the error's reimport advice
+impossible to follow.
+
+Moved primary Claude sessions now appear as moved under Needs you, with their new
+path and recovery guidance in Details. Reimport session (S), Revive on a moved
+row, Add existing Claude, and `mtly import <session-id>` all provide recovery.
+Reimport refreshes checkout metadata on the same member, preserves identity,
+name, crew and history, and releases any old owned terminal without stopping or
+resuming the conversation. Normal Terminate/Retire work after reimport. Other
+members cannot adopt the moved candidate through session switching or linking.
+
+Workspace and ownership checks remain in force. Grouped conversations must share
+the destination workspace before reimport, or the other conversations must be
+stopped. Discovery failure and unavailable/protected destinations retain the
+entry. No live user session has been changed during implementation or tests.
+
+Validation: isolated lifecycle tests pass for moved worktrees, non-Git
+workspaces, a previously switched primary ID, cleanup and archive preservation,
+no duplicate writer, hook routing, invalid workspaces and terminal ownership.
+TUI tests cover 60x10, 80-column and wide recovery actions and Revive routing.
+
+The recovery picker also passed a real terminal test. Vet, CI-pinned lint (zero
+issues), installer/uninstaller and four-platform builds passed. OpenCode's plugin
+tests failed once during parallel checks, then passed on retry. The full Go run
+passed all packages except `cmd/motley`'s `TestClaudeReportingEndToEnd`, which lost
+hook updates. Three focused retries failed at varying events; the same test also
+failed on unchanged main (`8c56542`). Hook reporting has a 250 ms deadline; this
+baseline failure is recorded without changing unrelated reporting code.
+
+Read-only live diagnosis confirmed backend-62 kept its Claude conversation ID
+while moving from the backend checkout to the feature-3088 worktree. The new
+binary lists it as moved and offers that new path for reimport. Installed
+`local-claude-workspace-reimport`; binary checksum matches `bin/motley`. Backup:
+`~/.motley/local-fix-backups/claude-workspace-reimport-20261006T074814Z/motley`.
+Restarted only `_motley`'s monitor pane; every other tmux pane and PID is unchanged.
+The live member is left for the user to reimport; no Claude process was stopped
+and no live member, conversation, worktree or history was removed. Changes remain
+local on the feature branch; no PR has been published.
+
+### Details action and checkout binary correction — 2026-10-06
+
+The user still saw an empty picker after the first installation. Live process
+inspection found two instances: the upgraded `~/.local/bin/motley` monitor and a
+separately launched `./bin/motley` in the main checkout. Running the same
+`import --replace ... --list` against each reproduced the discrepancy: the
+checkout binary listed no candidate; the installed binary listed the moved one.
+The first installation missed the user's checkout binary.
+
+Details now places a clickable `[Reimport session (S)]` immediately below the
+member title. Rendering and mouse hit testing share the label and account for
+viewport scrolling; the action remains visible at 60x10. The existing Actions
+entry and keyboard shortcut remain available.
+
+Validation: full TUI suite, focused real-terminal Add existing and Details-click
+reimports passed. The shortcut fixture initially sent `2S` in a single write,
+which Bubble Tea read as one input; sending each key after its screen update made
+the actual Details-to-Shift+S-to-Enter route pass. Lint (zero issues), vet, native
+build and whitespace checks passed. Earlier baseline hook-reporting failure is
+unchanged and is recorded above.
+
+Both `~/.local/bin/motley` and the primary checkout's `bin/motley` now match the
+feature build, version `local-claude-reimport-details`. Previous binaries are in
+`~/.motley/local-fix-backups/reimport-details-20261006T075412Z/`. Only `_motley` was restarted; every other tmux pane/PID was
+preserved. The separately launched instance must be reopened to load the new
+executable. No live member was reimported or terminated during validation.
+
+### Rebuild from the primary checkout and PR — 2026-10-06
+
+Replacing the checkout binary alone did not survive the user's rebuild: its
+source still came from main. Corrected that delivery mistake by transferring all
+18 implementation, test and documentation files into `~/projects/motley` on
+`fix/claude-reimport-details`. Verified their contents matched the tested feature
+worktree before adding this checkpoint. Untracked `tasks/` is preserved.
+
+A normal `make build` in the primary checkout now produces a binary whose
+replacement picker lists backend-62's new workspace. Focused recovery UI tests
+and all three real-terminal entry routes (Add existing, Details click, Shift+S)
+passed in that checkout. Vet and CI-pinned lint passed. Origin main was refreshed
+and remains the branch base. The user requested a PR after this verification;
+publication includes only this fix and its documentation/tests.
