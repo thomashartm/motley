@@ -1871,3 +1871,11 @@ releasing the terminal, and a real-terminal click for an unchanged conversation.
 Vet, CI-pinned lint, native build and four-platform builds passed. No live member
 was reimported or terminated during validation. Publication follows separately
 because PR #69 has already merged.
+
+Installed `local-reimport-visible` in both the primary checkout and
+`~/.local/bin/motley`. Previous installed binary is backed up under
+`~/.motley/local-fix-backups/reimport-visible-20261006T083243Z/`. Restarted only
+`_motley`; other tmux panes/PIDs are unchanged. Live readback shows Reimport above
+an activity summary on a working Claude member. The standalone instance needs a
+restart to load the new executable. Published follow-up PR #70:
+https://github.com/thomashartm/motley/pull/70
