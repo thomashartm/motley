@@ -17,8 +17,9 @@ real-terminal editor flows, Go vet, CI-version golangci-lint (0 issues), and
 fails on both this change and an untouched HEAD snapshot with a missing hook event.
 `TestMemberLifecycle` intermittently read an incomplete fixture receipt; it passed
 in the baseline snapshot and on its final isolated rerun here. No installed binary
-was replaced. PR publication requested; origin/main was refreshed and matches the
-branch base at `69d7f19`. Hosted CI is pending publication.
+was replaced. Origin/main was refreshed and matches the branch base at `69d7f19`.
+Published implementation commit `521b295` in PR #71:
+https://github.com/thomashartm/motley/pull/71. Hosted CI is pending.
 
 ## Keep empty Needs You visible — 2026-10-05
 
