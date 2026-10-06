@@ -229,7 +229,7 @@ func RemoveCrew(id string, force bool) error {
 	return syncAppearance(affected, remaining)
 }
 
-type IdentityEdit struct{ Name, Ticket, Crew, Color *string }
+type IdentityEdit struct{ Name, Info, Ticket, Crew, Color *string }
 
 func EditIdentity(id string, edit IdentityEdit) error {
 	dir, err := state.MembersDir()
@@ -259,6 +259,9 @@ func EditIdentity(id string, edit IdentityEdit) error {
 		// The recorded issue belongs to the old ticket; u fetches the new one.
 		m.Ticket, m.Issue = *edit.Ticket, nil
 	}
+	if edit.Info != nil {
+		m.Info = strings.TrimSpace(*edit.Info)
+	}
 	if edit.Crew != nil {
 		m.Crew = *edit.Crew
 		if m.Crew == "none" {
@@ -268,9 +271,9 @@ func EditIdentity(id string, edit IdentityEdit) error {
 	if edit.Color != nil {
 		m.Color = *edit.Color
 	}
-	for _, v := range []string{m.Name, m.Ticket} {
+	for _, v := range []string{m.Name, m.Info, m.Ticket} {
 		if strings.IndexFunc(v, unicode.IsControl) >= 0 {
-			return fmt.Errorf("name and ticket must not contain control characters")
+			return fmt.Errorf("name, info and ticket must not contain control characters")
 		}
 	}
 	if err := validateIdentity(m.Crew, m.Color, crews); err != nil {

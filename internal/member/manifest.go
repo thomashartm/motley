@@ -31,6 +31,7 @@ type Manifest struct {
 	Schema    int        `toml:"schema"`
 	ID        string     `toml:"id"`
 	Name      string     `toml:"name"`
+	Info      string     `toml:"info,omitempty"`
 	Repo      string     `toml:"repo"`
 	RepoPath  string     `toml:"repo_path"`
 	Worktree  string     `toml:"worktree"`

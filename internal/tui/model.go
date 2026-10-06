@@ -240,6 +240,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.managerCursor = max(0, min(m.managerCursor, len(m.crews)-1))
 		m.restoreCrewSelection(crewKey, id)
 		m.updateDetail()
+		if msg.err == nil {
+			m.detail.GotoTop()
+			return m, m.poll
+		}
 	case retireChecked:
 		m.busy = false
 		m.busyText = ""

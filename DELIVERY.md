@@ -1,5 +1,26 @@
 # Delivery checkpoints
 
+## Session name and purpose in Details — 2026-10-06
+
+Repository rules checked: local Git/gh CLI, this linked worktree stays on
+`feature/motley-show-name-of-an-agent-in-teh-details`, and progress lives here.
+
+Details now shows the saved Name and optional Info one below the other, ahead
+of activity text, with wrapping instead of a clipped name heading. Edit exposes
+Info directly below Name and stores it in the member manifest. Existing manifests
+remain valid. Saving requests fresh metadata and scrolls Details back to the top.
+
+Validation: all internal packages passed in the full Go suite. Focused persistence,
+editor, mouse, and layout checks (including 60x10 and 80 columns) passed, as did both
+real-terminal editor flows, Go vet, CI-version golangci-lint (0 issues), and
+`git diff --check`. The full suite is not green: `TestClaudeReportingEndToEnd`
+fails on both this change and an untouched HEAD snapshot with a missing hook event.
+`TestMemberLifecycle` intermittently read an incomplete fixture receipt; it passed
+in the baseline snapshot and on its final isolated rerun here. No installed binary
+was replaced. Origin/main was refreshed and matches the branch base at `69d7f19`.
+Published implementation commit `521b295` in PR #71:
+https://github.com/thomashartm/motley/pull/71. Hosted CI is pending.
+
 ## Keep empty Needs You visible — 2026-10-05
 
 Repository rules checked: local Git/gh CLI, feature branch retained in this

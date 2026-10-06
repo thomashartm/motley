@@ -51,14 +51,14 @@ func (e *identityEditor) colourField(index int) bool {
 	if index < 0 || index >= len(e.fields) {
 		return false
 	}
-	return (e.kind == "member" && index == 3) || ((e.kind == "add" || e.kind == "crew") && index == 2)
+	return (e.kind == "member" && index == 4) || ((e.kind == "add" || e.kind == "crew") && index == 2)
 }
 
 func (e *identityEditor) selectorName(index int) string {
 	if e.colourField(index) {
 		return "Colour"
 	}
-	if e.kind == "member" && index == 2 && index < len(e.fields) {
+	if e.kind == "member" && index == 3 && index < len(e.fields) {
 		return "Crew"
 	}
 	return ""
@@ -140,7 +140,8 @@ func (m Model) editMember() (tea.Model, tea.Cmd) {
 	}
 	r := m.selectedRow()
 	m.message = ""
-	m.editor = newEditor("member", r.ID, []string{"Name", "Ticket", "Crew", "Colour"}, []string{r.Name, r.Ticket, r.Crew, r.Color})
+	m.editor = newEditor("member", r.ID, []string{"Name", "Info", "Ticket", "Crew", "Colour"}, []string{r.Name, r.Info, r.Ticket, r.Crew, r.Color})
+	m.editor.fields[1].Placeholder = "Purpose or goal (optional)"
 	return m, textinput.Blink
 }
 func (m Model) updateManager(key string) (tea.Model, tea.Cmd) {
@@ -303,8 +304,8 @@ func (m Model) updateEditor(msg tea.Msg) (tea.Model, tea.Cmd) {
 					a, b, c, d := e.fields[0].Value(), e.fields[1].Value(), e.fields[2].Value(), e.fields[3].Value()
 					err = member.EditCrew(e.id, member.CrewEdit{Title: &a, URL: &b, Color: &c, Gig: &d})
 				case "member":
-					a, b, c, d := e.fields[0].Value(), e.fields[1].Value(), e.fields[2].Value(), e.fields[3].Value()
-					err = member.EditIdentity(e.id, member.IdentityEdit{Name: &a, Ticket: &b, Crew: &c, Color: &d})
+					name, info, ticket, crewID, color := e.fields[0].Value(), e.fields[1].Value(), e.fields[2].Value(), e.fields[3].Value(), e.fields[4].Value()
+					err = member.EditIdentity(e.id, member.IdentityEdit{Name: &name, Info: &info, Ticket: &ticket, Crew: &crewID, Color: &color})
 				case "delete":
 					err = member.RemoveCrew(e.id, e.force)
 				}
