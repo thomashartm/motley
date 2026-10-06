@@ -42,7 +42,7 @@ func TestArrowPanelsAndEditor(t *testing.T) {
 	if m.busy || m.editor.fields[0].Value() != "alphya" {
 		t.Fatal("shortcut intercepted text")
 	}
-	for i := 0; i < 4; i++ {
+	for i := 0; i < len(m.editor.fields); i++ {
 		m = arrow(m, tea.KeyDown)
 	}
 	if !strings.Contains(m.View(), "> [ Save ]") {

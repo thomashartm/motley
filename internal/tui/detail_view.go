@@ -61,7 +61,7 @@ func (m Model) memberDetails() string {
 	if name == "" {
 		name = r.ID
 	}
-	title := colored("▌ "+clean(name), member.Color(r.Manifest, m.crews))
+	title := colored("▌ Details", member.Color(r.Manifest, m.crews))
 	status := r.CurrentStatus()
 	icon, sc := statusIcon(status)
 	ticket, ticketURL := ticketLink(r)
@@ -106,7 +106,10 @@ func (m Model) memberDetails() string {
 	if r.Blueprint != "" {
 		fields = append(fields, detailField{"Blueprint", clean(r.Blueprint)})
 	}
-	header := fit(title, width) + "\n"
+	header := fit(title, width) + "\n" + detailFields([]detailField{
+		{"Name", clean(name)},
+		{"Info", clean(r.Info)},
+	}, width) + "\n\n"
 	body := header + detailFields(fields, width)
 	if m.event.Status == status {
 		text := m.event.Summary

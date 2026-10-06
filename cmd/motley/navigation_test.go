@@ -28,11 +28,11 @@ func TestArrowEditorTerminal(t *testing.T) {
 	send("\x1b[C", "[Details]")
 	send("\x1b[C", "[Actions] ↑↓/jk choose")
 	send("\x1b[B\r", "Edit feat-arrows")
-	send(" changed\x1b[B\x1b[B\x1b[B\x1b[B", "> [ Save ]")
+	send(" changed"+strings.Repeat("\x1b[B", 5), "> [ Save ]")
 	send("\r", "Saved")
 	eventually(t, func() bool { return f.manifest("feat-arrows").Name == "Arrow fixture changed" })
 	send("\r", "Edit feat-arrows")
-	send(" discarded\x1b[B\x1b[B\x1b[B\x1b[B\x1b[B", "> [ Cancel ]")
+	send(" discarded"+strings.Repeat("\x1b[B", 6), "> [ Cancel ]")
 	send("\r", "[Actions] ↑↓/jk choose")
 	if f.manifest("feat-arrows").Name != "Arrow fixture changed" {
 		t.Fatal("cancel wrote changes")
