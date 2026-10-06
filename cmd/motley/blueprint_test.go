@@ -18,7 +18,7 @@ func TestBlueprintSpawnAndResume(t *testing.T) {
 	f := newMemberFixture(t, bin, "main")
 	f.motley("crew", "add", "--title", "FX Banking", "--url", "https://example.com/work")
 	for _, agent := range []string{"claude", "codex", "opencode"} {
-		writeFixture(t, filepath.Join(f.home, "fake agents", agent), "#!/bin/sh\nfor arg do printf '%s\\0' \"$arg\"; done > \"$HOME/prompt-$MOTLEY_MEMBER.args\"\n", 0755)
+		writeFixture(t, filepath.Join(f.home, "fake agents", agent), "#!/bin/sh\nfor arg do printf '%s\\0' \"$arg\"; done > \"$HOME/prompt-$MOTLEY_MEMBER.args.tmp\"\nmv \"$HOME/prompt-$MOTLEY_MEMBER.args.tmp\" \"$HOME/prompt-$MOTLEY_MEMBER.args\"\n", 0755)
 	}
 	global := filepath.Join(f.home, "config/motley/blueprints")
 	local := filepath.Join(f.repo, ".motley/blueprints")

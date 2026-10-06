@@ -20,10 +20,12 @@ import (
 	"github.com/thomashartm/motley/internal/crew"
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/member"
+	"github.com/thomashartm/motley/internal/worktree"
 )
 
 const (
 	repoStep = iota
+	sourceStep
 	identityStep
 	agentStep
 	blueprintStep
@@ -38,6 +40,7 @@ type spawnForm struct {
 	previewAction       int
 	step, choice, field int
 	repos               []string
+	sources             []worktree.SourceBranch
 	blueprints          []blueprint.Blueprint
 	query               textinput.Model
 	fields              []textinput.Model
@@ -61,6 +64,10 @@ type spawnLoaded struct {
 type spawnPrepared struct {
 	plan member.Prepared
 	err  error
+}
+type spawnSourcesLoaded struct {
+	sources []worktree.SourceBranch
+	err     error
 }
 type spawnProgress string
 type issueLooked struct {
@@ -171,6 +178,16 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	f := m.spawn
 	switch msg := msg.(type) {
+	case spawnSourcesLoaded:
+		m.busy, m.busyText = false, ""
+		if msg.err != nil {
+			f.err = msg.err.Error()
+			return m, nil
+		}
+		f.sources = msg.sources
+		f.step, f.choice = sourceStep, 0
+		f.query.SetValue("")
+		f.err = ""
 	case spawnLoaded:
 		m.busy = false
 		m.busyText = ""
@@ -324,9 +341,37 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				f.opts.Repo = matches[f.choice]
+				f.err = ""
+				m.busy, m.busyText = true, "Loading source branches…"
+				cfg, repo := m.spawnCfg, f.opts.Repo
+				return m, func() tea.Msg {
+					path, err := member.ResolveRepo(cfg.RepositoryRoots(), repo)
+					if err != nil {
+						return spawnSourcesLoaded{err: err}
+					}
+					sources, err := worktree.SourceBranches(path)
+					return spawnSourcesLoaded{sources: sources, err: err}
+				}
+			default:
+				f.query, _ = f.query.Update(msg)
+				f.choice = 0
+			}
+			return m, nil
+		}
+		if f.step == sourceStep {
+			switch k {
+			case "up":
+				f.choice = max(0, f.choice-1)
+			case "down":
+				f.choice = min(f.choice+1, max(0, len(f.sourceMatches())-1))
+			case "enter":
+				matches := f.sourceMatches()
+				if len(matches) == 0 {
+					return m, nil
+				}
+				f.opts.SourceRef = matches[f.choice].Ref
 				f.fields = inputs("", "", "feature", branchPreview("feature", f.opts.Repo, "", ""))
-				f.field = 0
-				f.step = identityStep
+				f.field, f.step = 0, identityStep
 				f.err = ""
 			default:
 				f.query, _ = f.query.Update(msg)
@@ -386,20 +431,23 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if f.step == modeStep {
 					f.opts.Mode = ""
 					if f.choice > 0 {
-						f.opts.Mode = agents.Modes(f.opts.Agent)[f.choice-1].Name
+						mode := agents.Modes(f.opts.Agent)[f.choice-1]
+						if arg := agents.ConflictingArg(f.blueprintArgs(), mode.Args); arg != "" {
+							f.err = "Blueprint sets " + arg + "; choose its permissions or restart without that blueprint."
+							return m, nil
+						}
+						f.opts.Mode = mode.Name
 					}
+					f.err = ""
 				} else {
-					var args []string
 					if f.choice > 0 {
 						b := f.blueprints[f.choice-1]
-						f.opts.Blueprint, f.vars, args = b.Name, b.Vars, b.Args
+						f.opts.Blueprint, f.vars = b.Name, b.Vars
 					}
-					// A blueprint that already decides permissions skips the mode choice.
-					if len(agents.Modes(f.opts.Agent)) > 0 && agents.ConflictingArg(args, []string{"--permission-mode"}) == "" {
-						f.step = modeStep
-						f.choice = 0
-						return m, nil
-					}
+					// Always ask, including when permissions come from a blueprint.
+					f.step = modeStep
+					f.choice = 0
+					return m, nil
 				}
 				if len(f.vars) > 0 {
 					f.fields = inputs(make([]string, len(f.vars))...)
@@ -519,6 +567,20 @@ func (m Model) editPrompt() tea.Cmd {
 	})
 }
 
+func (m Model) previewSource() string {
+	if ref := m.spawn.plan.SourceRef; ref != "" {
+		label := ref
+		for _, source := range m.spawn.sources {
+			if source.Ref == ref {
+				label = source.Label()
+				break
+			}
+		}
+		return "Source: " + label
+	}
+	return ""
+}
+
 // previewContext names the issue and crew a prepared spawn uses, if any.
 func (m Model) previewContext() string {
 	var parts []string
@@ -536,6 +598,9 @@ func (m Model) previewContext() string {
 // previewHeight leaves room for the title, summary, context and action lines.
 func (m Model) previewHeight(height int) int {
 	chrome := 4
+	if m.previewSource() != "" {
+		chrome++
+	}
 	if m.previewContext() != "" {
 		chrome++
 	}
@@ -545,7 +610,7 @@ func (m Model) previewHeight(height int) int {
 func (m Model) spawnView(height int) string {
 	f := m.spawn
 	width := m.detailWidth()
-	titles := []string{"Repository — type to filter", "Ticket and name", "Agent", "Blueprint", "Permission mode", "Variables", "Prompt preview", "Launching", "Crew"}
+	titles := []string{"Repository — type to filter", "Source branch — type to filter", "Ticket and name", "Agent", "Blueprint", "Authorization level", "Variables", "Prompt preview", "Launching", "Crew"}
 	lines := []string{"Spawn · " + titles[f.step]}
 	switch f.step {
 	case repoStep:
@@ -553,6 +618,11 @@ func (m Model) spawnView(height int) string {
 		input.Width = max(1, width-2)
 		lines = append(lines, input.View())
 		lines = append(lines, f.repositoryView(width, max(1, height-3))...)
+	case sourceStep:
+		input := f.query
+		input.Width = max(1, width-2)
+		lines = append(lines, input.View())
+		lines = append(lines, f.sourceView(width, max(1, height-2))...)
 	case identityStep, varsStep:
 		labels := []string{"Ticket or GitHub issue URL (optional)", "Name", "Branch type (←/→)", "Branch"}
 		if f.step == varsStep {
@@ -593,12 +663,25 @@ func (m Model) spawnView(height int) string {
 			}
 		case modeStep:
 			labels = []string{"default from " + f.opts.Agent + " settings"}
+			if args := f.blueprintArgs(); len(args) > 0 {
+				labels[0] = "Use blueprint / agent settings"
+				for _, mode := range agents.Modes(f.opts.Agent) {
+					if agents.ConflictingArg(args, mode.Args) != "" {
+						labels[0] = "Use blueprint permissions: " + strings.Join(args, " ")
+						break
+					}
+				}
+			}
 			for _, mode := range agents.Modes(f.opts.Agent) {
 				labels = append(labels, mode.Name+" — "+mode.Summary)
 			}
 		}
-		start := max(0, f.choice-max(1, height-3)+1)
-		for i := start; i < len(labels) && len(lines) < height-1; i++ {
+		bottom := height - 1
+		if f.err != "" {
+			bottom--
+		}
+		start := max(0, f.choice-max(1, bottom-2)+1)
+		for i := start; i < len(labels) && len(lines) < bottom; i++ {
 			prefix := "  "
 			if i == f.choice {
 				prefix = "> "
@@ -609,8 +692,13 @@ func (m Model) spawnView(height int) string {
 		summary := f.plan.Manifest.Repo + " @ " + f.plan.Manifest.Branch + " · " + f.plan.Manifest.Agent
 		if f.plan.Manifest.Mode != "" {
 			summary += " · " + f.plan.Manifest.Mode
+		} else {
+			summary += " · blueprint / agent permissions"
 		}
 		lines = append(lines, clean(summary))
+		if source := m.previewSource(); source != "" {
+			lines = append(lines, clean(source))
+		}
 		if context := m.previewContext(); context != "" {
 			lines = append(lines, clean(context))
 		}

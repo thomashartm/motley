@@ -121,7 +121,7 @@ func TestSpawnPreviewSummarisesIssueAndCrew(t *testing.T) {
 	issue := &member.IssueContext{Number: 412, Title: "Cache FX"}
 	plan := member.Prepared{Manifest: member.Manifest{Repo: "api", Branch: "feat/412-fx", Agent: "claude"}, Issue: issue, NewCrew: &crew.Crew{Title: "Epic: FX"}}
 	m = update(m, spawnPrepared{plan: plan})
-	if view := ansi.Strip(m.spawnView(30)); !strings.Contains(view, "api @ feat/412-fx · claude\n#412 Cache FX · new crew Epic: FX\n> Launch") {
+	if view := ansi.Strip(m.spawnView(30)); !strings.Contains(view, "api @ feat/412-fx · claude") || !strings.Contains(view, "#412 Cache FX · new crew Epic: FX\n> Launch") {
 		t.Fatal(view)
 	}
 	if m.spawn.preview.Height != m.contentHeight()-5 {

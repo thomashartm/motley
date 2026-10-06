@@ -16,7 +16,8 @@ func TestSpawnPermissionMode(t *testing.T) {
 	bin := buildLifecycleBinary(t)
 	f := newMemberFixture(t, bin, "main")
 	// The fake Claude records its exact argv and working directory.
-	writeFixture(t, filepath.Join(f.home, "fake agents", "claude"), "#!/bin/sh\npwd -P > \"$HOME/cwd-$MOTLEY_MEMBER\"\nfor arg do printf '%s\\0' \"$arg\"; done > \"$HOME/argv-$MOTLEY_MEMBER\"\n", 0755)
+	const recordArgs = "#!/bin/sh\npwd -P > \"$HOME/cwd-$MOTLEY_MEMBER\"\nfor arg do printf '%s\\0' \"$arg\"; done > \"$HOME/argv-$MOTLEY_MEMBER.tmp\"\nmv \"$HOME/argv-$MOTLEY_MEMBER.tmp\" \"$HOME/argv-$MOTLEY_MEMBER\"\n"
+	writeFixture(t, filepath.Join(f.home, "fake agents", "claude"), recordArgs, 0755)
 	launched := func(id string) ([]string, string) {
 		t.Helper()
 		receipt := filepath.Join(f.home, "argv-"+id)
@@ -82,6 +83,22 @@ func TestSpawnPermissionMode(t *testing.T) {
 	if argv, _ := launched("feat-combined"); !reflect.DeepEqual(argv, []string{"--model", "opus", "--permission-mode", "plan", "--", "Start."}) {
 		t.Fatalf("combined argv %q", argv)
 	}
+	for _, agent := range []string{"codex", "opencode"} {
+		writeFixture(t, filepath.Join(f.home, "fake agents", agent), recordArgs, 0755)
+		for _, mode := range agents.Modes(agent) {
+			branch := "feat/" + agent + "-" + mode.Name
+			id := strings.ReplaceAll(branch, "/", "-")
+			f.motley("spawn", "--repo", "api", "--branch", branch, "--agent", agent, "--mode", mode.Name, "--detach")
+			m := f.manifest(id)
+			if m.Mode != mode.Name || !reflect.DeepEqual(m.AgentArgs, mode.Args) {
+				t.Fatalf("authorization not persisted: %+v", m)
+			}
+			want := agents.StartArgv(agent, mode.Args, "")[1:]
+			if argv, _ := launched(id); !reflect.DeepEqual(argv, want) {
+				t.Fatalf("%s launch: %q want %q", id, argv, want)
+			}
+		}
+	}
 }
 
 func TestSpawnPermissionModeFailuresBeforeWorktree(t *testing.T) {
@@ -97,7 +114,7 @@ func TestSpawnPermissionModeFailuresBeforeWorktree(t *testing.T) {
 	}{
 		{[]string{"--mode", "bogus"}, `unknown claude mode "bogus"; choose manual, acceptEdits, plan, auto, dontAsk, bypassPermissions, sandbox`},
 		{[]string{"--mode", "default"}, `unknown claude mode "default"`},
-		{[]string{"--mode", "plan", "--agent", "codex"}, "modes are available for claude only, not codex"},
+		{[]string{"--mode", "plan", "--agent", "codex"}, "unknown codex mode"},
 		{[]string{"--mode", "auto", "--blueprint", "plan-first"}, "blueprint plan-first already sets --permission-mode"},
 		{[]string{"--mode", "sandbox", "--blueprint", "settings"}, "blueprint settings already sets --settings"},
 	} {

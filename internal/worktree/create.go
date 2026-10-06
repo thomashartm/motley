@@ -63,17 +63,32 @@ func Create(repo, branch, base, path string, output io.Writer) error {
 	if err := CheckNew(repo, branch, path); err != nil {
 		return err
 	}
-	_, _ = fmt.Fprintln(output, "Fetching origin/"+base+"…")
-	if err := gitx.Run(repo, output, "fetch", "origin", base); err != nil {
-		if err := gitx.Run(repo, output, "fetch", "origin"); err != nil {
+	start := "origin/" + base
+	if strings.HasPrefix(base, "refs/") {
+		source, err := ResolveSource(repo, base)
+		if err != nil {
 			return err
+		}
+		start = source.Ref
+		if source.Remote != "" {
+			_, _ = fmt.Fprintln(output, "Fetching "+source.Label()+"…")
+			if err := gitx.Run(repo, output, "fetch", source.Remote, "+refs/heads/"+source.Name+":"+source.Ref); err != nil {
+				return err
+			}
+		}
+	} else {
+		_, _ = fmt.Fprintln(output, "Fetching origin/"+base+"…")
+		if err := gitx.Run(repo, output, "fetch", "origin", base); err != nil {
+			if err := gitx.Run(repo, output, "fetch", "origin"); err != nil {
+				return err
+			}
 		}
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintln(output, "Creating worktree…")
-	if err := gitx.Run(repo, output, "worktree", "add", "-b", branch, path, "origin/"+base); err != nil {
+	if err := gitx.Run(repo, output, "worktree", "add", "-b", branch, path, start); err != nil {
 		return err
 	}
 	_, _ = fmt.Fprintln(output, "Pushing branch…")

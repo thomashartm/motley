@@ -22,6 +22,7 @@ import (
 )
 
 type SpawnOptions struct {
+	SourceRef                                                       string // Exact local or remote ref explicitly selected in the dialog.
 	Repo, Branch, Agent, Ticket, Name, Crew, Color, Blueprint, Mode string
 	Vars                                                            []string
 	// Issue is a lookup the caller already made (the TUI); Prepare then uses it
@@ -106,6 +107,11 @@ func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
 		return Prepared{}, err
 	}
 	base, err := worktree.Base(repo)
+	if opts.SourceRef != "" {
+		var source worktree.SourceBranch
+		source, err = worktree.ResolveSource(repo, opts.SourceRef)
+		base = source.Name
+	}
 	if err != nil {
 		return Prepared{}, err
 	}
@@ -158,7 +164,7 @@ func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
 		m.Issue = &IssueRef{Title: issue.Title, URL: issue.URL}
 		issueData = blueprint.Issue{Title: issue.Title, Body: issue.Body, URL: issue.URL}
 	}
-	p := Prepared{Manifest: m, HasPrompt: opts.Blueprint != "", Issue: issue, NewCrew: suggested, AutoCrew: autoCrew, Warnings: warnings}
+	p := Prepared{Manifest: m, SourceRef: opts.SourceRef, HasPrompt: opts.Blueprint != "", Issue: issue, NewCrew: suggested, AutoCrew: autoCrew, Warnings: warnings}
 	if p.HasPrompt {
 		c, _ := crew.Find(crews, opts.Crew)
 		if suggested != nil {
@@ -175,6 +181,7 @@ func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
 // Prepared is a reviewed spawn plan. Preparing it does not create a worktree or
 // write state; the TUI can edit its prompt before launching the same snapshot.
 type Prepared struct {
+	SourceRef string
 	Manifest  Manifest
 	Prompt    string
 	HasPrompt bool
@@ -220,7 +227,11 @@ func SpawnPrepared(p Prepared, progress io.Writer) (Manifest, error) {
 	if err != nil {
 		return Manifest{}, err
 	}
-	if err := worktree.Create(m.RepoPath, m.Branch, m.Base, m.Worktree, progress); err != nil {
+	source := p.SourceRef
+	if source == "" {
+		source = m.Base
+	}
+	if err := worktree.Create(m.RepoPath, m.Branch, source, m.Worktree, progress); err != nil {
 		return Manifest{}, err
 	}
 	// Create the suggested crew only once the worktree exists, so a failed

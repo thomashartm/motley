@@ -112,7 +112,7 @@ func (m Model) footerGroups() (full, compact []string) {
 	}
 	if m.spawn != nil {
 		switch m.spawn.step {
-		case repoStep:
+		case repoStep, sourceStep:
 			return []string{"[Spawn] ↑↓ select · type to filter", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}
 		case identityStep, varsStep:
 			if m.spawn.step == identityStep && m.spawn.field == 2 {

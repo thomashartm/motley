@@ -91,6 +91,18 @@ func TestPrepareIsReadOnly(t *testing.T) {
 		t.Fatalf("%v %s", err, out)
 	}
 	git("push", "-u", "origin", "main")
+	git("branch", "feature/unpushed-parent")
+	git("checkout", "feature/unpushed-parent")
+	git("commit", "--allow-empty", "-m", "Unpushed parent")
+	sourceCommit, err := exec.Command("git", "-C", repo, "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	git("checkout", "main")
+	p, err = Prepare(cfg, SpawnOptions{Repo: "api", Branch: "feat/preview", SourceRef: "refs/heads/feature/unpushed-parent", Blueprint: "plan", Vars: []string{"constraints=Read only"}, NoGH: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	script := "#!/bin/sh\ncase \"$*\" in *list-sessions*) echo 'no server running on fixture' >&2; exit 1;; *list-keys*) echo 'unknown key'; exit 1;; *) exit 0;; esac\n"
 	if err := os.WriteFile(filepath.Join(bin, "tmux"), []byte(script), 0755); err != nil {
 		t.Fatal(err)
@@ -105,6 +117,10 @@ func TestPrepareIsReadOnly(t *testing.T) {
 	}
 	if !created.Prompt || created.Blueprint != "plan" {
 		t.Fatal(created)
+	}
+	head, err := exec.Command("git", "-C", created.Worktree, "rev-parse", "HEAD").Output()
+	if err != nil || string(head) != string(sourceCommit) || created.Base != "feature/unpushed-parent" {
+		t.Fatalf("spawn lost selected source: HEAD=%s base=%s err=%v", head, created.Base, err)
 	}
 	path := filepath.Join(root, "state/motley/members", created.ID+".prompt.md")
 	got, err := blueprint.ReadPrompt(path)
@@ -123,5 +139,24 @@ func TestPrepareIsReadOnly(t *testing.T) {
 	}
 	if !created.Prompt || created.Blueprint != "" {
 		t.Fatal("manual prompt metadata", created)
+	}
+}
+
+func TestPreparePreservesExplicitSource(t *testing.T) {
+	cfg, _, repo, _ := prepareRepo(t, "ROOT/remote.git")
+	if out, err := exec.Command("git", "-C", repo, "branch", "feature/parent").CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	writeBlueprint(t, repo, "source", "+++\n+++\nSource: {{.Base}}")
+	p, err := Prepare(cfg, SpawnOptions{Repo: "api", Branch: "fix/child", SourceRef: "refs/heads/feature/parent", Blueprint: "source", NoGH: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.SourceRef != "refs/heads/feature/parent" || p.Manifest.Base != "feature/parent" || p.Prompt != "Source: feature/parent" {
+		t.Fatalf("%+v", p)
+	}
+	_, err = Prepare(cfg, SpawnOptions{Repo: "api", Branch: "fix/child", SourceRef: "refs/heads/missing", NoGH: true})
+	if err == nil || !strings.Contains(err.Error(), "source branch") {
+		t.Fatal("missing source accepted", err)
 	}
 }
