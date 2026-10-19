@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -20,6 +21,7 @@ import (
 	"github.com/thomashartm/motley/internal/crew"
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/member"
+	"github.com/thomashartm/motley/internal/tmux"
 	"github.com/thomashartm/motley/internal/worktree"
 )
 
@@ -75,9 +77,19 @@ type issueLooked struct {
 	err   error
 }
 type spawnFinished struct {
-	manifest member.Manifest
-	err      error
+	manifest  member.Manifest
+	err       error
+	windowErr error
 }
+
+func spawnPreviewActions() []string {
+	actions := []string{"Launch", "Edit prompt", "Cancel"}
+	if runtime.GOOS == "darwin" {
+		actions = append(actions, "Launch in new Ghostty window")
+	}
+	return actions
+}
+
 type promptEdited struct {
 	prompt string
 	err    error
@@ -252,6 +264,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.step = previewStep
 			return m, nil
 		}
+		newWindow := f.previewAction == 3
 		m.spawn = nil
 		m.query.SetValue("")
 		m.group = "attention"
@@ -273,6 +286,11 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.updateDetail()
 		m.message = "Created " + msg.manifest.ID
+		if msg.windowErr != nil {
+			m.message += "; open with mtly attach " + msg.manifest.ID + " — " + msg.windowErr.Error()
+		} else if newWindow {
+			m.message += " in a new Ghostty window"
+		}
 		return m, m.requestDetail(true)
 	}
 	return m, nil
@@ -301,11 +319,12 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if f.step == previewStep {
+			actionCount := len(spawnPreviewActions())
 			switch k {
 			case "right", "tab":
-				f.previewAction = (f.previewAction + 1) % 3
+				f.previewAction = (f.previewAction + 1) % actionCount
 			case "left", "shift+tab":
-				f.previewAction = (f.previewAction + 2) % 3
+				f.previewAction = (f.previewAction + actionCount - 1) % actionCount
 			case "enter":
 				if f.previewAction == 1 {
 					return m, m.editPrompt()
@@ -317,10 +336,14 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.busy = true
 				m.busyText = "Spawning…"
 				f.step = launchStep
-				plan, send := f.plan, m.sendMsg
+				plan, send, newWindow := f.plan, m.sendMsg, f.previewAction == 3
 				return m, func() tea.Msg {
 					created, err := member.SpawnPrepared(plan, progressWriter{send})
-					return spawnFinished{created, err}
+					result := spawnFinished{manifest: created, err: err}
+					if err == nil && newWindow {
+						result.windowErr = tmux.OpenGhostty(created.ID, created.Worktree)
+					}
+					return result
 				}
 			case "e":
 				return m, m.editPrompt()
@@ -702,7 +725,7 @@ func (m Model) spawnView(height int) string {
 		if context := m.previewContext(); context != "" {
 			lines = append(lines, clean(context))
 		}
-		lines = append(lines, "> "+[]string{"Launch", "Edit prompt", "Cancel"}[f.previewAction]+"  ←/→")
+		lines = append(lines, "> "+spawnPreviewActions()[f.previewAction]+"  ←/→")
 		v := f.preview
 		v.Width = width
 		v.Height = m.previewHeight(height)

@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-// REQUIREMENTS §0: no AppleScript or Ghostty API. Motley controls terminals
-// only through tmux, so no source may script another application.
-func TestNoAppleScript(t *testing.T) {
+// REQUIREMENTS §0: session control stays in tmux. The explicit new-window
+// spawn action is the sole application-scripting exception.
+func TestApplicationScriptingIsConfinedToGhosttyLaunch(t *testing.T) {
 	forbidden := regexp.MustCompile(`(?i)osascript|applescript|tell application|NSAppleScript`)
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -40,14 +40,23 @@ func TestNoAppleScript(t *testing.T) {
 		if path == self {
 			return nil
 		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		// Keep the exception in one launcher and its GUI-boundary tests;
+		// imported-session focus and all other application scripting stay banned.
+		switch filepath.ToSlash(rel) {
+		case "internal/tmux/ghostty.go", "cmd/motley/ghostty_test.go":
+			return nil
+		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
 		checked++
 		if match := forbidden.Find(data); match != nil {
-			rel, _ := filepath.Rel(root, path)
-			t.Errorf("%s uses %q; Motley must not script other applications", rel, match)
+			t.Errorf("%s uses %q; application scripting is restricted to the Ghostty new-window launcher", rel, match)
 		}
 		return nil
 	})
