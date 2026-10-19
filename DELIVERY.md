@@ -2042,5 +2042,7 @@ without tmux, and a visible Launch control at 60x10.
 Independent review found an initial-launch retry that could lose the saved
 prompt; it is fixed, regression-tested and re-reviewed. The first full suite
 also found a stale assertion for the renamed menu item; the corrected test and
-final full suite passed. No installed binary has been replaced. Hosted CI is
-pending publication.
+final full suite passed. No installed binary has been replaced.
+
+Published implementation `57c8e47` in PR #74:
+https://github.com/thomashartm/motley/pull/74. Hosted CI is pending.
