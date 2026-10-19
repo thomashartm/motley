@@ -2000,6 +2000,10 @@ Final validation passed: `make test` (installer, uninstaller, OpenCode plugin
 and all Go packages), `go vet ./...`, CI-pinned golangci-lint 2.14.0 (0 issues),
 `make build cross-build`, focused recovery/policy tests, and the real Ghostty
 smoke test. The follow-up review of the policy exception found no issues.
-Runnable build: `bin/mtly` in this worktree. Publication requested; origin main
-was refreshed and remains at the original base `dc89770`. No installation or
-merge performed.
+Runnable build: `bin/mtly` in this worktree. Origin main was refreshed before
+publication and remains at the original base `dc89770`.
+
+Published PR #73: https://github.com/thomashartm/motley/pull/73
+Implementation commit: `4649535`. Focused TUI/tmux/member suites and diff checks
+passed again before publication. Hosted CI is pending; no installation or merge
+performed.
