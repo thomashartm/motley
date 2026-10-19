@@ -582,7 +582,7 @@ func (m Model) jump() (tea.Model, tea.Cmd) {
 		return m.beginAgentPicker()
 	}
 	if !m.selectedRow().Alive {
-		m.message = "This member is dead; its tmux session is not running."
+		m.message = "This member is stopped; use Revive to restart it in its existing worktree."
 		return m, nil
 	}
 	if m.selectedRow().External && m.selectedRow().CodexSession == "" {

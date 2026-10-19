@@ -32,6 +32,9 @@ func validateIdentity(crewID, color string, crews []crew.Crew) error {
 	return nil
 }
 func applyAppearance(m Manifest, crews []crew.Crew) error {
+	if m.LaunchTarget == "ghostty" {
+		return nil
+	}
 	c, _ := crew.Find(crews, m.Crew)
 	return tmux.Appearance(m.ID, m.Name, m.Ticket, m.Agent, c.Title, Color(m, crews))
 }
@@ -43,6 +46,13 @@ func saveManifest(dir string, m Manifest) error {
 	return state.WriteAtomic(filepath.Join(dir, m.ID+".toml"), data)
 }
 func syncAppearance(ms []Manifest, crews []crew.Crew) error {
+	managed := []Manifest{}
+	for _, m := range ms {
+		if m.LaunchTarget != "ghostty" {
+			managed = append(managed, m)
+		}
+	}
+	ms = managed
 	if len(ms) == 0 {
 		return nil
 	}

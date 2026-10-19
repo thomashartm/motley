@@ -90,7 +90,7 @@ func TestOverviewCreateActionsWithAndWithoutMembers(t *testing.T) {
 			got := next.(Model)
 			switch key {
 			case "s":
-				if got.spawn == nil || cmd == nil {
+				if got.spawn == nil || got.spawn.step != agentStep || cmd != nil {
 					t.Fatal("spawn unreachable")
 				}
 			case "a":

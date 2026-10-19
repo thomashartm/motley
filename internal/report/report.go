@@ -19,6 +19,7 @@ import (
 	"github.com/thomashartm/motley/internal/agents/opencode"
 	"github.com/thomashartm/motley/internal/member"
 	"github.com/thomashartm/motley/internal/state"
+	"github.com/thomashartm/motley/internal/terminal"
 	"github.com/thomashartm/motley/internal/tmux"
 )
 
@@ -190,10 +191,22 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 	}
 	defer func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN) }()
 	previous := tmux.HookState{}
-	var manifest member.Manifest
-	var manifestErr error
-	if agent == "claude" {
-		manifest, manifestErr = member.Load(dir, id)
+	manifest, manifestErr := member.Load(dir, id)
+	direct := manifestErr == nil && manifest.LaunchTarget == "ghostty"
+	var directStatus terminal.Status
+	if direct {
+		alive, err := terminal.Alive(dir, id)
+		if err != nil {
+			return err
+		}
+		if !alive {
+			return nil
+		}
+		directStatus, err = terminal.ReadStatus(dir, id)
+		if err != nil {
+			return err
+		}
+		previous = tmux.HookState{Agent: manifest.Agent, Status: directStatus.Status, Context: directStatus.Context}
 	}
 	if agent == "claude" && manifestErr == nil && manifest.ClaudeSession != "" && event.Event != "WorkspaceMismatch" {
 		if !manifest.TracksClaude(event.AgentSessionID) {
@@ -203,7 +216,7 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 			external = true
 		}
 	}
-	if !external {
+	if !external && !direct {
 		previous, err = tmux.ReportStatus(ctx, id)
 		if err != nil {
 			return err
@@ -274,7 +287,19 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 		}
 		contextText = strings.TrimSuffix(string(data), "\n")
 	}
-	if !external {
+	if direct {
+		directStatus.Agent, directStatus.Seen = manifest.Agent, event.TS.Unix()
+		if event.Status != "" {
+			directStatus.Status, directStatus.Context = event.Status, contextText
+		}
+		if changed {
+			directStatus.Since = event.TS.Unix()
+		}
+		if err := terminal.WriteStatus(dir, id, directStatus); err != nil {
+			return err
+		}
+	}
+	if !external && !direct {
 		if err := tmux.ReportUpdate(ctx, id, event.Status, contextText, changed, event.TS.Unix()); err != nil {
 			return err
 		}

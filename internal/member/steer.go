@@ -47,6 +47,17 @@ func Reply(id, text string) error {
 	if err := CheckID(id); err != nil {
 		return err
 	}
+	dir, err := state.MembersDir()
+	if err != nil {
+		return err
+	}
+	m, err := Load(dir, id)
+	if err != nil {
+		return err
+	}
+	if m.LaunchTarget == "ghostty" {
+		return directTerminal(m)
+	}
 	sessions, err := tmux.Sessions()
 	if err != nil {
 		return err

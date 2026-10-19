@@ -31,7 +31,9 @@ func TestSpawnPickerUsesAllEntrypoints(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, ".motley/config.toml"), []byte("repos_roots = ['~/projects', '~/projects/aderis']\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	_, cmd := (Model{}).beginSpawn()
+	first, _ := (Model{}).beginSpawn()
+	m := arrow(first.(Model), tea.KeyEnter)
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	msg := cmd().(spawnLoaded)
 	if msg.err != nil || !reflect.DeepEqual(msg.repos, []string{filepath.Join(home, "projects/motley"), filepath.Join(home, "projects/aderis/backend")}) {
 		t.Fatalf("picker repositories: %v (%v)", msg.repos, msg.err)

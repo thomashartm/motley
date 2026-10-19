@@ -230,7 +230,8 @@ func TestGlobalTemplatesRemainAvailableDuringSpawn(t *testing.T) {
 		t.Fatalf("git init: %s: %v", out, err)
 	}
 	m.spawnCfg.ReposRoots = []string{root}
-	m.spawn = &spawnForm{step: agentStep, choice: 1}
+	m.spawn = &spawnForm{step: identityStep, fields: inputs("", "FX", "feature", "feature/fx")}
+	m.spawn.opts.Agent = "codex"
 	m.spawn.opts.Repo = "api"
 	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd == nil {

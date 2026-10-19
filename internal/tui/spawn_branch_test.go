@@ -33,7 +33,7 @@ func TestSpawnRepositoryBranchPrefix(t *testing.T) {
 		t.Fatal("branch type choice is not visible")
 	}
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
-	if m.spawn.step != agentStep || m.spawn.opts.Ticket != "2991" || m.spawn.opts.Branch != "fix/backend-2991-allow-exempt-tax-code" {
+	if m.busyText != "Loading blueprints…" || m.spawn.opts.Ticket != "2991" || m.spawn.opts.Branch != "fix/backend-2991-allow-exempt-tax-code" {
 		t.Fatalf("identity not accepted: %+v (%s)", m.spawn.opts, m.spawn.err)
 	}
 }

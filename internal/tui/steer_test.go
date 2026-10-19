@@ -74,7 +74,7 @@ func TestReplyAndSendModel(t *testing.T) {
 }
 func TestSpawnFormValidationAndPreview(t *testing.T) {
 	m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: 100, Height: 24})
-	m.spawn = &spawnForm{repos: []string{"api", "billing-service"}, query: inputs("")[0]}
+	m.spawn = &spawnForm{opts: member.SpawnOptions{Agent: "codex"}, repos: []string{"api", "billing-service"}, query: inputs("")[0]}
 	m = update(m, key("bsv"))
 	if len(m.spawn.matches()) != 1 {
 		t.Fatal("repo fuzzy filter")
@@ -95,15 +95,10 @@ func TestSpawnFormValidationAndPreview(t *testing.T) {
 	if got := m.spawn.fields[3].Value(); got != "feature/billing-service-412-fx-cache" {
 		t.Fatal(got)
 	}
-	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
-	if m.spawn.step != agentStep || m.spawn.opts.Name != "FX cache" {
-		t.Fatal("identity step")
-	}
-	m = update(m, key("j"))
 	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = next.(Model)
-	if cmd == nil || m.spawn.opts.Agent != "codex" {
-		t.Fatal("agent selection")
+	if m.busyText != "Loading blueprints…" || m.spawn.opts.Name != "FX cache" || cmd == nil {
+		t.Fatal("identity must continue to blueprints")
 	}
 	m = update(m, spawnLoaded{forBlueprint: true, blueprints: []blueprint.Blueprint{{Name: "plan", Agent: "codex", Vars: []string{"constraints"}}}})
 	m = update(m, key("j"))
@@ -148,7 +143,7 @@ func TestSpawnFormValidationAndPreview(t *testing.T) {
 }
 func TestSpawnViewsFit(t *testing.T) {
 	for _, size := range [][2]int{{60, 10}, {80, 24}, {140, 40}} {
-		for step := repoStep; step <= launchStep; step++ {
+		for _, step := range []int{repoStep, sourceStep, identityStep, agentStep, destinationStep, blueprintStep, modeStep, varsStep, previewStep, launchStep} {
 			m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: size[0], Height: size[1]})
 			m.spawn = &spawnForm{step: step, opts: member.SpawnOptions{Agent: "claude"}, repos: []string{strings.Repeat("repo", 50)}, query: inputs("")[0], fields: inputs("412", strings.Repeat("界", 100), "feature", "feature/api-test"), vars: []string{"a", "b", "c", "d"}, preview: viewport.New(30, 10), progress: strings.Repeat("long progress", 100), err: "an error\nsecond line"}
 			m.spawn.preview.SetContent(strings.Repeat("prompt\n", 50))
@@ -164,7 +159,7 @@ func TestSpawnFormPermissionMode(t *testing.T) {
 	atBlueprints := func(t *testing.T) Model {
 		t.Helper()
 		m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
-		m.spawn = &spawnForm{step: agentStep, opts: member.SpawnOptions{Repo: "api", Name: "FX", Branch: "feat/fx"}}
+		m.spawn = &spawnForm{step: identityStep, fields: inputs("", "FX", "feature", "feat/fx"), opts: member.SpawnOptions{Agent: "claude", Repo: "api"}}
 		next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 		m = next.(Model)
 		if cmd == nil || m.spawn.opts.Agent != "claude" {

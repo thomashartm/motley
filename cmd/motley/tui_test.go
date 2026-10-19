@@ -116,7 +116,7 @@ func TestOverviewAndMonitor(t *testing.T) {
 	overview.send(t, "\x1b[H")
 	eventually(t, func() bool {
 		view := f.tmux("capture-pane", "-p", "-t", "=overview:")
-		return strings.Contains(view, "Overview actions") && strings.Contains(view, "Spawn member") && !strings.Contains(view, "Edit member")
+		return strings.Contains(view, "Overview actions") && strings.Contains(view, "Spawn agent") && !strings.Contains(view, "Edit member")
 	})
 	overview.send(t, "o")
 	eventually(t, func() bool { return strings.Contains(f.tmux("capture-pane", "-p", "-t", "=overview:"), "[Open agent]") })

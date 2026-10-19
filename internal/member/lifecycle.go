@@ -15,6 +15,7 @@ import (
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/gitx"
 	"github.com/thomashartm/motley/internal/state"
+	"github.com/thomashartm/motley/internal/terminal"
 	"github.com/thomashartm/motley/internal/tmux"
 	"github.com/thomashartm/motley/internal/worktree"
 )
@@ -56,6 +57,9 @@ func InspectRetire(id string) (RetireCheck, error) {
 }
 func inspectRetire(m Manifest, checkChanges bool) (RetireCheck, error) {
 	c := RetireCheck{Manifest: m}
+	if err := requireDirectStopped(m); err != nil {
+		return c, err
+	}
 	if !m.Imported() && (!filepath.IsAbs(m.Worktree) || !filepath.IsAbs(m.RepoPath)) {
 		return c, fmt.Errorf("manifest worktree and repo paths must be absolute")
 	}
@@ -65,7 +69,7 @@ func inspectRetire(m Manifest, checkChanges bool) (RetireCheck, error) {
 		}
 	}
 	// Killing the caller's pane would interrupt cleanup halfway through.
-	if os.Getenv("TMUX") != "" && os.Getenv("TMUX_PANE") != "" {
+	if m.LaunchTarget != "ghostty" && os.Getenv("TMUX") != "" && os.Getenv("TMUX_PANE") != "" {
 		session, err := tmux.CurrentSession()
 		if err != nil {
 			return c, err
@@ -165,9 +169,12 @@ func Retire(id string, force, keepBranch bool) error {
 	if risks := check.Risks(); len(risks) > 0 && !force {
 		return fmt.Errorf("refusing to retire %s: %s; use --force to discard this work", id, strings.Join(risks, "; "))
 	}
-	sessions, err := tmux.Sessions()
-	if err != nil {
-		return err
+	var sessions []tmux.Session
+	if m.LaunchTarget != "ghostty" {
+		sessions, err = tmux.Sessions()
+		if err != nil {
+			return err
+		}
 	}
 	live := false
 	for _, s := range sessions {
@@ -205,7 +212,7 @@ func archive(dir string, m Manifest) error {
 	now := time.Now().UTC()
 	m.RetiredAt = &now
 	prefix := filepath.Join(dir, "archive", m.ID)
-	suffixes := []string{".events.jsonl", ".prompt.md", ".claude.json"}
+	suffixes := []string{".events.jsonl", ".prompt.md", ".claude.json", ".direct.json"}
 	for _, id := range append([]string{m.ClaudeSession}, m.ClaudeSessions...) {
 		if id != "" {
 			suffixes = append(suffixes, "."+id+".claude.json")
@@ -270,6 +277,15 @@ func Terminate(id string) error {
 	if err != nil {
 		return err
 	}
+	if m.LaunchTarget == "ghostty" {
+		if err := requireDirectStopped(m); err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Join(dir, "archive"), 0700); err != nil {
+			return err
+		}
+		return archive(dir, m)
+	}
 	if m.CodexSession != "" {
 		return fmt.Errorf("codex runs on a shared server; stop the turn in Codex, or Retire to remove only its Motley entry")
 	}
@@ -279,7 +295,7 @@ func Terminate(id string) error {
 	if err != nil {
 		return err
 	}
-	if os.Getenv("TMUX") != "" && os.Getenv("TMUX_PANE") != "" {
+	if m.LaunchTarget != "ghostty" && os.Getenv("TMUX") != "" && os.Getenv("TMUX_PANE") != "" {
 		session, err := tmux.CurrentSession()
 		if err != nil {
 			return err
@@ -318,6 +334,24 @@ func Revive(id string) error {
 	m, err := Load(dir, id)
 	if err != nil {
 		return err
+	}
+	if m.LaunchTarget == "ghostty" {
+		if err := requireDirectStopped(m); err != nil {
+			return err
+		}
+		if err := m.CheckCheckout(); err != nil {
+			return err
+		}
+		if _, err := agents.Binary(m.Agent); err != nil {
+			return err
+		}
+		status, err := terminal.ReadStatus(dir, m.ID)
+		if err != nil {
+			return err
+		}
+		// A failed window open has not consumed the reviewed first prompt. Once
+		// the foreground runner has started, revive follows the normal resume path.
+		return terminal.OpenGhostty(m.ID, m.Worktree, status.Seen != 0)
 	}
 	sessions, err := tmux.Sessions()
 	if err != nil {

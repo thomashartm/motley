@@ -58,26 +58,7 @@ func Run(monitor bool, client string, bell bool) error {
 		return err
 	}
 	catalog := &member.Catalog{}
-	poll := func() tea.Msg {
-		manifests, err := catalog.Load(dir)
-		if err != nil {
-			return snapshot{err: err}
-		}
-		sessions, err := tmux.Sessions()
-		if err != nil {
-			return snapshot{err: err}
-		}
-		clients, err := tmux.Clients()
-		if err != nil {
-			return snapshot{err: err}
-		}
-		crews, err := crew.Load()
-		if err != nil {
-			return snapshot{err: err}
-		}
-		rows, err := member.RefreshExternal(member.Join(manifests, sessions))
-		return snapshot{rows: rows, clients: clients, crews: crews, err: err}
-	}
+	poll := func() tea.Msg { return pollMembers(catalog, dir, inside) }
 	m := newModel(monitor, inside, client, poll)
 	m.bell = bell
 	m.github = gh.Default()
@@ -99,4 +80,36 @@ func Run(monitor bool, client string, bell bool) error {
 		return tmux.Attach(m.attachID)
 	}
 	return nil
+}
+
+func pollMembers(catalog *member.Catalog, dir string, inside bool) snapshot {
+	manifests, err := catalog.Load(dir)
+	if err != nil {
+		return snapshot{err: err}
+	}
+	needTmux := inside
+	for _, manifest := range manifests {
+		if manifest.LaunchTarget != "ghostty" {
+			needTmux = true
+			break
+		}
+	}
+	var sessions []tmux.Session
+	var clients []tmux.Client
+	if needTmux {
+		sessions, err = tmux.Sessions()
+		if err != nil {
+			return snapshot{err: err}
+		}
+		clients, err = tmux.Clients()
+		if err != nil {
+			return snapshot{err: err}
+		}
+	}
+	crews, err := crew.Load()
+	if err != nil {
+		return snapshot{err: err}
+	}
+	rows, err := member.RefreshExternal(member.Join(manifests, sessions))
+	return snapshot{rows: rows, clients: clients, crews: crews, err: err}
 }

@@ -160,3 +160,30 @@ func TestPreparePreservesExplicitSource(t *testing.T) {
 		t.Fatal("missing source accepted", err)
 	}
 }
+
+func TestPrepareGhosttyNeedsNoTmux(t *testing.T) {
+	cfg, _, _, bin := prepareRepo(t, "ROOT/remote.git")
+	if err := os.Remove(filepath.Join(bin, "tmux")); err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range []string{"git", "cp"} {
+		path, err := exec.LookPath(tool)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(path, filepath.Join(bin, tool)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", bin)
+	p, err := Prepare(cfg, SpawnOptions{Repo: "api", Branch: "feature/direct", LaunchTarget: "ghostty", NoGH: true})
+	if err != nil || p.Manifest.LaunchTarget != "ghostty" {
+		t.Fatalf("%+v %v", p, err)
+	}
+	if _, err := Prepare(cfg, SpawnOptions{Repo: "api", Branch: "feature/default", NoGH: true}); err == nil || !strings.Contains(err.Error(), "tmux") {
+		t.Fatal("default tmux requirement lost", err)
+	}
+	if _, err := Prepare(cfg, SpawnOptions{LaunchTarget: "unsupported"}); err == nil || !strings.Contains(err.Error(), "unknown terminal") {
+		t.Fatal("invalid terminal accepted", err)
+	}
+}

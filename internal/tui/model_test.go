@@ -49,7 +49,7 @@ func TestJumpRoutesAndRefusals(t *testing.T) {
 	m := newModel(false, false, "", nil)
 	m = update(m, snapshot{rows: []member.Row{row("a", false)}})
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
-	if m.attachID != "" || !strings.Contains(m.message, "dead") {
+	if m.attachID != "" || !strings.Contains(m.message, "stopped") {
 		t.Fatal("dead member should not attach")
 	}
 	m = update(m, snapshot{rows: []member.Row{row("a", true)}})

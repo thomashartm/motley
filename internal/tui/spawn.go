@@ -21,7 +21,6 @@ import (
 	"github.com/thomashartm/motley/internal/crew"
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/member"
-	"github.com/thomashartm/motley/internal/tmux"
 	"github.com/thomashartm/motley/internal/worktree"
 )
 
@@ -36,6 +35,7 @@ const (
 	previewStep
 	launchStep
 	crewStep
+	destinationStep
 )
 
 type spawnForm struct {
@@ -77,17 +77,24 @@ type issueLooked struct {
 	err   error
 }
 type spawnFinished struct {
-	manifest  member.Manifest
-	err       error
-	windowErr error
+	manifest member.Manifest
+	err      error
 }
 
-func spawnPreviewActions() []string {
-	actions := []string{"Launch", "Edit prompt", "Cancel"}
+func spawnPreviewActions() []string { return []string{"Launch", "Edit prompt", "Cancel"} }
+
+func spawnDestinations() []string {
 	if runtime.GOOS == "darwin" {
-		actions = append(actions, "Launch in new Ghostty window")
+		return []string{"New Ghostty window", "tmux session"}
 	}
-	return actions
+	return []string{"tmux session"}
+}
+
+func spawnDestination(target string) string {
+	if target == "ghostty" {
+		return "New Ghostty window (direct agent)"
+	}
+	return "tmux session"
 }
 
 type promptEdited struct {
@@ -168,7 +175,13 @@ func spawnTicket(ticket string) string {
 }
 
 func (m Model) beginSpawn() (tea.Model, tea.Cmd) {
-	m.spawn = &spawnForm{query: inputs("")[0]}
+	m.spawn = &spawnForm{step: agentStep, query: inputs("")[0]}
+	m.message = ""
+	return m, nil
+}
+
+func (m Model) loadSpawnRepos() (tea.Model, tea.Cmd) {
+	m.spawn.step, m.spawn.choice = repoStep, 0
 	m.busy = true
 	m.busyText = "Finding repositories…"
 	m.message = ""
@@ -213,6 +226,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.choice = 0
 		} else {
 			m.spawnCfg = msg.cfg
+			f.step, f.choice = repoStep, 0
 			f.repos = msg.repos
 			if len(f.repos) == 0 {
 				f.err = "No main repositories found under " + strings.Join(msg.cfg.RepositoryRoots(), ", ")
@@ -247,10 +261,12 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			f.warning = "Issue lookup skipped: " + gh.Hint(msg.err)
 		}
-		f.step, f.choice = agentStep, 0
+		f.choice = 0
 		if msg.issue != nil && msg.issue.Suggestion != nil && f.opts.Crew == "" {
 			f.step = crewStep
+			return m, nil
 		}
+		return m.loadSpawnBlueprints()
 	case spawnProgress:
 		f.progress += string(msg)
 		if len(f.progress) > 8192 {
@@ -259,12 +275,12 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spawnFinished:
 		m.busy = false
 		m.busyText = ""
-		if msg.err != nil {
+		if msg.err != nil && msg.manifest.ID == "" {
 			f.err = msg.err.Error()
 			f.step = previewStep
 			return m, nil
 		}
-		newWindow := f.previewAction == 3
+		newWindow := msg.manifest.LaunchTarget == "ghostty"
 		m.spawn = nil
 		m.query.SetValue("")
 		m.group = "attention"
@@ -277,7 +293,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 				rows = append(rows, r)
 			}
 		}
-		m.allRows = append(rows, member.Row{Manifest: msg.manifest, Alive: true, Status: "starting", Since: msg.manifest.CreatedAt.Unix()})
+		m.allRows = append(rows, member.Row{Manifest: msg.manifest, Alive: msg.err == nil, External: newWindow, Status: "starting", Since: msg.manifest.CreatedAt.Unix()})
 		m.applyFilter()
 		for i, r := range m.rows {
 			if r.ID == msg.manifest.ID {
@@ -286,14 +302,35 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.updateDetail()
 		m.message = "Created " + msg.manifest.ID
-		if msg.windowErr != nil {
-			m.message += "; open with mtly attach " + msg.manifest.ID + " — " + msg.windowErr.Error()
+		if msg.err != nil {
+			m.message += "; " + msg.err.Error()
 		} else if newWindow {
 			m.message += " in a new Ghostty window"
 		}
 		return m, m.requestDetail(true)
 	}
 	return m, nil
+}
+func (m Model) loadSpawnBlueprints() (tea.Model, tea.Cmd) {
+	f := m.spawn
+	f.choice = 0
+	cfg, repo, agent := m.spawnCfg, f.opts.Repo, f.opts.Agent
+	m.busy = true
+	m.busyText = "Loading blueprints…"
+	return m, func() tea.Msg {
+		path, err := member.ResolveRepo(cfg.RepositoryRoots(), repo)
+		if err != nil {
+			return spawnLoaded{forBlueprint: true, err: err}
+		}
+		bs, err := blueprint.Discover(path, filepath.Base(repo))
+		var filtered []blueprint.Blueprint
+		for _, b := range bs {
+			if b.Agent == agent || len(b.Args) == 0 {
+				filtered = append(filtered, b)
+			}
+		}
+		return spawnLoaded{forBlueprint: true, blueprints: filtered, err: err}
+	}
 }
 func (m Model) prepareSpawn() (tea.Model, tea.Cmd) {
 	f := m.spawn
@@ -336,14 +373,10 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.busy = true
 				m.busyText = "Spawning…"
 				f.step = launchStep
-				plan, send, newWindow := f.plan, m.sendMsg, f.previewAction == 3
+				plan, send := f.plan, m.sendMsg
 				return m, func() tea.Msg {
 					created, err := member.SpawnPrepared(plan, progressWriter{send})
-					result := spawnFinished{manifest: created, err: err}
-					if err == nil && newWindow {
-						result.windowErr = tmux.OpenGhostty(created.ID, created.Worktree)
-					}
-					return result
+					return spawnFinished{manifest: created, err: err}
 				}
 			case "e":
 				return m, m.editPrompt()
@@ -402,9 +435,11 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		if f.step == agentStep || f.step == blueprintStep || f.step == modeStep || f.step == crewStep {
+		if f.step == agentStep || f.step == blueprintStep || f.step == modeStep || f.step == crewStep || f.step == destinationStep {
 			size := 3
 			switch f.step {
+			case destinationStep:
+				size = len(spawnDestinations())
 			case crewStep:
 				size = 2
 			case blueprintStep:
@@ -428,29 +463,21 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 					default:
 						f.opts.CreateCrew = true
 					}
-					f.step, f.choice = agentStep, 0
-					return m, nil
+					return m.loadSpawnBlueprints()
 				}
 				if f.step == agentStep {
 					f.opts.Agent = []string{"claude", "codex", "opencode"}[f.choice]
-					cfg, repo, agent := m.spawnCfg, f.opts.Repo, f.opts.Agent
-					m.busy = true
-					m.busyText = "Loading blueprints…"
-					return m, func() tea.Msg {
-						path, err := member.ResolveRepo(cfg.RepositoryRoots(), repo)
-						if err != nil {
-							return spawnLoaded{forBlueprint: true, err: err}
-						}
-						bs, err := blueprint.Discover(path, filepath.Base(repo))
-						var filtered []blueprint.Blueprint
-						for _, b := range bs {
-							if b.Agent == agent || len(b.Args) == 0 {
-								filtered = append(filtered, b)
-							}
-						}
-						return spawnLoaded{forBlueprint: true, blueprints: filtered, err: err}
-					}
+					f.step, f.choice = destinationStep, 0
+					return m, nil
 				}
+				if f.step == destinationStep {
+					f.opts.LaunchTarget = "tmux"
+					if runtime.GOOS == "darwin" && f.choice == 0 {
+						f.opts.LaunchTarget = "ghostty"
+					}
+					return m.loadSpawnRepos()
+				}
+
 				if f.step == modeStep {
 					f.opts.Mode = ""
 					if f.choice > 0 {
@@ -509,8 +536,7 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.opts.Ticket, f.opts.Name, f.opts.Branch = ticket, name, branch
 			f.choice, f.err = 0, ""
 			if _, ok := member.IssueNumber(ticket); !ok || m.github == nil {
-				f.step = agentStep
-				return m, nil
+				return m.loadSpawnBlueprints()
 			}
 			cfg, client, repo := m.spawnCfg, m.github, f.opts.Repo
 			m.busy = true
@@ -620,7 +646,7 @@ func (m Model) previewContext() string {
 
 // previewHeight leaves room for the title, summary, context and action lines.
 func (m Model) previewHeight(height int) int {
-	chrome := 4
+	chrome := 5
 	if m.previewSource() != "" {
 		chrome++
 	}
@@ -633,7 +659,7 @@ func (m Model) previewHeight(height int) int {
 func (m Model) spawnView(height int) string {
 	f := m.spawn
 	width := m.detailWidth()
-	titles := []string{"Repository — type to filter", "Source branch — type to filter", "Ticket and name", "Agent", "Blueprint", "Authorization level", "Variables", "Prompt preview", "Launching", "Crew"}
+	titles := []string{"Repository — type to filter", "Source branch — type to filter", "Ticket and name", "Agent", "Blueprint", "Authorization level", "Variables", "Prompt preview", "Launching", "Crew", "Launch destination"}
 	lines := []string{"Spawn · " + titles[f.step]}
 	switch f.step {
 	case repoStep:
@@ -668,9 +694,11 @@ func (m Model) spawnView(height int) string {
 			}
 			lines = append(lines, prefix+clean(labels[i]), value)
 		}
-	case agentStep, blueprintStep, modeStep, crewStep:
+	case agentStep, blueprintStep, modeStep, crewStep, destinationStep:
 		labels := []string{"claude", "codex", "opencode"}
 		switch f.step {
+		case destinationStep:
+			labels = spawnDestinations()
 		case crewStep:
 			s := f.issue.Suggestion
 			first := fmt.Sprintf("Create crew %q and assign", s.Title)
@@ -719,10 +747,11 @@ func (m Model) spawnView(height int) string {
 			summary += " · blueprint / agent permissions"
 		}
 		lines = append(lines, clean(summary))
-		if source := m.previewSource(); source != "" {
+		lines = append(lines, "Destination: "+spawnDestination(f.plan.Manifest.LaunchTarget))
+		if source := m.previewSource(); source != "" && len(lines) < height-1 {
 			lines = append(lines, clean(source))
 		}
-		if context := m.previewContext(); context != "" {
+		if context := m.previewContext(); context != "" && len(lines) < height-1 {
 			lines = append(lines, clean(context))
 		}
 		lines = append(lines, "> "+spawnPreviewActions()[f.previewAction]+"  ←/→")

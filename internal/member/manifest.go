@@ -16,7 +16,15 @@ import (
 	"github.com/thomashartm/motley/internal/worktree"
 )
 
+func ValidateLaunchTarget(target string) error {
+	if target != "" && target != "tmux" && target != "ghostty" {
+		return fmt.Errorf("unknown terminal %q; choose ghostty or tmux", target)
+	}
+	return nil
+}
+
 type Manifest struct {
+	LaunchTarget string `toml:"launch_target,omitempty"`
 	// Imported checkouts are borrowed: retirement never removes files or branches.
 	ClaudeSession string `toml:"claude_session,omitempty"`
 	// Additional explicitly linked conversations; ClaudeSession remains the Open target.
@@ -120,6 +128,9 @@ func Load(dir, id string) (Manifest, error) {
 	if err := toml.Unmarshal(data, &m); err != nil {
 		return Manifest{}, fmt.Errorf("parse %s: %w", path, err)
 	}
+	if err := ValidateLaunchTarget(m.LaunchTarget); err != nil {
+		return Manifest{}, err
+	}
 	if m.Schema != 1 || m.ID != id {
 		return Manifest{}, fmt.Errorf("invalid manifest %s: expected schema 1 and id %q", path, id)
 	}
@@ -177,8 +188,8 @@ func (r Row) CurrentStatus() string {
 	if !r.Alive {
 		return "dead"
 	}
-	if r.Status == "moved" {
-		return "moved"
+	if r.Status == "moved" || r.Status == "unknown" {
+		return r.Status
 	}
 	if !state.ValidStatus(r.Status) {
 		return "alive"
@@ -198,7 +209,13 @@ func List() ([]Row, error) {
 	if len(manifests) == 0 {
 		return nil, nil
 	}
-	sessions, err := tmux.Sessions()
+	var sessions []tmux.Session
+	for _, m := range manifests {
+		if m.LaunchTarget != "ghostty" {
+			sessions, err = tmux.Sessions()
+			break
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +233,7 @@ func RequireLive(id string) error {
 	for _, row := range rows {
 		if row.ID == id {
 			if !row.Alive {
-				return fmt.Errorf("member %s is dead: its tmux session is not running", id)
+				return fmt.Errorf("member %s is dead: its agent terminal is not running", id)
 			}
 			return nil
 		}

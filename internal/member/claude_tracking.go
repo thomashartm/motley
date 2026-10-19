@@ -49,6 +49,9 @@ func (s ClaudeSessionStatus) Access() string {
 
 // Access describes terminal access, not ownership of a shared agent server.
 func (r Row) Access() string {
+	if r.LaunchTarget == "ghostty" && r.Alive {
+		return "GHO"
+	}
 	managed, external := false, false
 	for _, s := range r.ClaudeStatuses {
 		if s.Alive {
@@ -86,6 +89,9 @@ func (s ClaudeSessionStatus) Location() string {
 // SessionLocation describes live conversations, independently of whether they
 // are busy. Per-conversation statuses explain which one is doing the work.
 func (r Row) SessionLocation() string {
+	if r.LaunchTarget == "ghostty" && r.Alive {
+		return "FG"
+	}
 	fg, bg := false, false
 	for _, s := range r.ClaudeStatuses {
 		if s.Alive {

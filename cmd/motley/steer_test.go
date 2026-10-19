@@ -97,11 +97,12 @@ func TestSpawnFormTerminal(t *testing.T) {
 		eventually(t, func() bool { return strings.Contains(ansi.Strip(terminal.text()[offset:]), want) })
 	}
 	eventually(t, func() bool { return strings.Contains(terminal.text(), "No members yet") })
-	send("s", "> api")
+	send("s", "Spawn · Agent")
+	send("\r", "Launch destination")
+	send("j\r", "> api")
 	send("api\r", "Source branch")
 	send("feature/parent\r", "Ticket and name")
-	send("412\tFX cache\r", "Agent")
-	send("\r", "Blueprint")
+	send("412\tFX cache\r", "Blueprint")
 	send("\r", "Authorization level") // none: an edited prompt still works without a blueprint
 	send("j", "> manual")
 	send("j", "> acceptEdits")

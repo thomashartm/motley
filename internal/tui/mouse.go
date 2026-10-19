@@ -42,6 +42,21 @@ func (m Model) navigationAvailable() bool {
 }
 
 func (m Model) mouseControls(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if m.spawn != nil && !m.busy && (m.spawn.step == agentStep || m.spawn.step == destinationStep) {
+		if m.width < 60 || m.height < 10 || msg.Button != tea.MouseButtonLeft || msg.Action != tea.MouseActionPress || msg.X <= m.listWidth()+2 || msg.X >= m.width-1 {
+			return m, nil
+		}
+		count := 3
+		if m.spawn.step == destinationStep {
+			count = len(spawnDestinations())
+		}
+		index := m.panelContentY(msg.Y) - 1
+		if index >= 0 && index < count && index+1 < m.contentHeight() {
+			m.spawn.choice = index
+			return m.updateSpawn(tea.KeyMsg{Type: tea.KeyEnter})
+		}
+		return m, nil
+	}
 	if m.blueprints != nil {
 		return m.blueprintMouse(msg)
 	}

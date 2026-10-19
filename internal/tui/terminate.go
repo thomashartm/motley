@@ -28,6 +28,10 @@ func (m Model) beginTerminate() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	r := m.selectedRow()
+	if r.LaunchTarget == "ghostty" && r.Alive {
+		m.message = "Stop the agent in its original Ghostty window, then use Terminate to archive its entry and keep the worktree."
+		return m, nil
+	}
 	m.terminating = &terminateDialog{id: id, name: r.Name, external: r.External, grouped: len(r.ClaudeSessions) > 0, stopped: !r.Alive}
 	m.message = ""
 	return m, nil

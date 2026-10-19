@@ -62,7 +62,7 @@ func newRootCommand() *cobra.Command {
 			return err
 		},
 	})
-	root.AddCommand(importCommand(), navigationCommand(), updateCommand(), tabsCommand(), sendCommand(), blueprintCommand(), crewCommand(), retireCommand(), reviveCommand(), adoptCommand(), spawnCommand(), listCommand(), connectCommand(true), connectCommand(false), execAgentCommand(), agentExitedCommand(), reportCommand(), hooksCommand())
+	root.AddCommand(importCommand(), navigationCommand(), updateCommand(), tabsCommand(), sendCommand(), blueprintCommand(), crewCommand(), retireCommand(), reviveCommand(), adoptCommand(), spawnCommand(), listCommand(), connectCommand(true), connectCommand(false), execAgentCommand(), runDirectCommand(), agentExitedCommand(), reportCommand(), hooksCommand())
 	root.AddCommand(&cobra.Command{
 		Use: "config", Short: "Show the configured repository and worktree roots", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
