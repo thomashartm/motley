@@ -1969,3 +1969,41 @@ Implementation commit: `98dca90`. The branch rebased cleanly onto current main
 (`5507bed`). After rebase, affected agent/worktree/member/TUI suites, terminal
 spawn flows, blueprint launch/resume, authorization argument tests, vet and
 CI-pinned lint all passed. Hosted CI is pending; no merge or installation.
+
+## Spawn in a new Ghostty window — 2026-10-19
+
+Implemented in the isolated worktree
+`/Users/thomas/worktrees/motley/feature-ghostty-session-window`, on
+`feature/ghostty-session-window` from main `dc89770`.
+
+The macOS spawn preview now offers **Launch in new Ghostty window** through
+the existing left/right action selector. It creates the worktree and agent
+through the normal spawn flow, then uses Ghostty's AppleScript API to open a
+new window attached to that exact tmux server/session. The overview remains
+open. Window errors preserve the member and show an attach recovery command;
+spawn errors do not open a window. Other platforms keep the existing actions.
+
+Ghostty 1.3+ is required. The launcher passes values as AppleScript arguments,
+quotes shell parameters, resolves the tmux socket explicitly, and removes
+inherited tmux client variables from the new attachment.
+
+Focused TUI/member/tmux tests and real-terminal spawn success/failure tests
+passed. An opt-in `MOTLEY_TEST_GHOSTTY=1` smoke test on Ghostty 1.3.1 opened
+exactly one real window, attached the fixture session, and verified that the
+agent pane PID did not change. Only fixture sessions/windows were cleaned up.
+The read-only code review found no blocking issues. The initial full test run
+passed all behavior tests but caught the older blanket AppleScript ban. The
+approved new-window action is now documented as a narrow exception in
+REQUIREMENTS §0; the policy test allows only the dedicated launcher and its
+tests. Imported-session focusing and other application scripting remain banned.
+Final validation passed: `make test` (installer, uninstaller, OpenCode plugin
+and all Go packages), `go vet ./...`, CI-pinned golangci-lint 2.14.0 (0 issues),
+`make build cross-build`, focused recovery/policy tests, and the real Ghostty
+smoke test. The follow-up review of the policy exception found no issues.
+Runnable build: `bin/mtly` in this worktree. Origin main was refreshed before
+publication and remains at the original base `dc89770`.
+
+Published PR #73: https://github.com/thomashartm/motley/pull/73
+Implementation commit: `4649535`. Focused TUI/tmux/member suites and diff checks
+passed again before publication. Hosted CI is pending; no installation or merge
+performed.

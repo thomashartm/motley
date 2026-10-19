@@ -42,7 +42,8 @@ Agents: Claude Code, Codex and OpenCode. Platforms: macOS and Linux. Delivery:
 a static Go executable per supported OS/architecture, without cgo, available
 as both `motley` and `mtly`.
 
-Ghostty displays tmux. motley never controls Ghostty directly.
+Ghostty displays tmux. On macOS, an explicit spawn action can open a new Ghostty
+window attached to the newly created session. Session control remains in tmux.
 
 ## 0. Principles and non-goals
 
@@ -51,8 +52,11 @@ Ghostty displays tmux. motley never controls Ghostty directly.
 - No background daemon. The TUI polls tmux; agents push status through hooks.
 - No automatic GitHub synchronization. `gh` runs only on explicit user action,
   plus an optional lookup at spawn.
-- No AppleScript or Ghostty API. Session control goes through tmux; repository
-  operations through git; GitHub operations through gh.
+- Session control goes through tmux; repository operations through git; GitHub
+  operations through gh. The explicit **Launch in new Ghostty window** spawn
+  action is the sole AppleScript exception (approved 2026-10-19): it may create
+  and activate a new window attached to the new tmux session. Do not search,
+  focus or send input to existing terminal windows, including imported agents.
 - Hooks must never slow down or break an agent. `motley report` returns fast and
   always exits 0.
 - motley gradually replaces `wt` 1.2.0 and `wt-clean` 1.0.0. The unchanged scripts

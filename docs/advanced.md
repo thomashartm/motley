@@ -33,6 +33,13 @@ then other branches. Type to filter all local and fetched remote branches.
 Local selections include unpushed commits; remote selections fetch that branch
 before creating the worktree. The preview shows the chosen source.
 
+On macOS, use **←/→** in the prompt preview to select **Launch in new Ghostty
+window**, then press **Enter**. Motley creates the worktree and agent session,
+opens a new Ghostty window attached to it, and keeps the overview open. This
+requires Ghostty 1.3 or later with AppleScript enabled; macOS may request
+Automation access. If the window cannot open, the session remains available and
+Motley shows an `mtly attach <member-id>` recovery command.
+
 New branch suggestions use `feature/<repo>-<ticket>-<name>`.
 The ticket is optional; a pasted GitHub issue URL contributes only its issue
 number. Tab to **Branch type** and use **←/→** to choose **feature** or **fix**.
