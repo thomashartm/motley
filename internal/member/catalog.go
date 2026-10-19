@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thomashartm/motley/internal/state"
+	"github.com/thomashartm/motley/internal/terminal"
 	"github.com/thomashartm/motley/internal/tmux"
 )
 
@@ -61,6 +63,18 @@ func Join(manifests []Manifest, sessions []tmux.Session) []Row {
 	}
 	rows := make([]Row, 0, len(manifests))
 	for _, m := range manifests {
+		if m.LaunchTarget == "ghostty" {
+			dir, dirErr := state.MembersDir()
+			alive, liveErr := terminal.Alive(dir, m.ID)
+			status, statusErr := terminal.ReadStatus(dir, m.ID)
+			row := Row{Manifest: m, External: true, Alive: alive, Status: status.Status, Since: status.Since, Seen: status.Seen}
+			if dirErr != nil || liveErr != nil || statusErr != nil {
+				row.Alive = true
+				row.Status = "unknown"
+			}
+			rows = append(rows, row)
+			continue
+		}
 		s := live[tmux.SessionName(m.ID)]
 		rows = append(rows, Row{Manifest: m, Alive: s.MemberID == m.ID, Status: s.Status, Since: s.Since, Seen: s.Seen})
 	}

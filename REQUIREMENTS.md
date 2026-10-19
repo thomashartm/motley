@@ -34,7 +34,7 @@ motley is a terminal tool for running and governing parallel AI coding sessions.
 | Term | Meaning |
 | --- | --- |
 | motley / mtly | The tool and its short command |
-| member | One git worktree, one tmux session and one coding agent |
+| member | One git worktree and coding agent, in a tmux session or a direct Ghostty window |
 | crew | A group of members; a text title and optional link |
 | gig | A package of work, described by the crew's optional gig field |
 
@@ -42,20 +42,22 @@ Agents: Claude Code, Codex and OpenCode. Platforms: macOS and Linux. Delivery:
 a static Go executable per supported OS/architecture, without cgo, available
 as both `motley` and `mtly`.
 
-Ghostty displays tmux. On macOS, an explicit spawn action can open a new Ghostty
-window attached to the newly created session. Session control remains in tmux.
+The main-menu **Spawn agent** flow asks for agent type, then destination:
+**New Ghostty window** on macOS (direct agent, no tmux) or **tmux session**.
+Both create a new worktree after repository, source and authorization selection.
 
 ## 0. Principles and non-goals
 
-- tmux is the source of truth for live state. Durable state is stored in TOML
+- tmux is the source of truth for tmux members. Direct Ghostty agents hold a
+  process lifetime lock and write status files; durable identity stays in TOML
   manifests. No database.
-- No background daemon. The TUI polls tmux; agents push status through hooks.
+- No background daemon. The TUI polls session state; agents push status through hooks.
 - No automatic GitHub synchronization. `gh` runs only on explicit user action,
   plus an optional lookup at spawn.
-- Session control goes through tmux; repository operations through git; GitHub
-  operations through gh. The explicit **Launch in new Ghostty window** spawn
-  action is the sole AppleScript exception (approved 2026-10-19): it may create
-  and activate a new window attached to the new tmux session. Do not search,
+- Repository operations go through git; GitHub operations through gh. The
+  **New Ghostty window** destination (including Revive of that destination) is
+  the sole AppleScript exception (approved 2026-10-19): it may create and activate
+  a new window running the selected agent directly in its worktree. Do not search,
   focus or send input to existing terminal windows, including imported agents.
 - Hooks must never slow down or break an agent. `motley report` returns fast and
   always exits 0.
@@ -329,7 +331,7 @@ with `.` and `:` replaced by `_`. A tmux session is a member if and only if its
 | `@motley_ticket`, `@motley_crew`, `@motley_agent` | spawn/edit | Status-line fields; crew is the title |
 | `@motley_color`, `@motley_emoji` | spawn/edit | Resolved palette color and emoji |
 
-Derived, never persisted: `dead` when a manifest exists without a tmux session;
+Derived, never persisted: `dead` when a manifest exists without its tmux session or direct agent;
 `stale` when status is working and the last hook exceeds `stale_after`.
 
 ### 6.3 Spawn
@@ -337,9 +339,13 @@ Derived, never persisted: `dead` when a manifest exists without a tmux session;
 ```text
 motley spawn --repo <r> [--ticket <t>] [--branch <b>] [--base <b>]
   [--name <n>] [--crew <id>] [--color <c>] [--blueprint <bp>] [--agent <a>]
-  [--mode <claude-permission-preset>]
+  [--mode <claude-permission-preset>] [--terminal tmux|ghostty]
   [--var k=v]... [--existing] [--no-gh] [--switch|--attach|--detach]
 ```
+
+The TUI exposes **Spawn agent (s)** in its main menu. Choose agent type first,
+then destination, then complete the new-worktree setup below. The preview shows
+the destination with ordinary Launch, Edit prompt and Cancel controls.
 
 1. Resolve a git repo directly under a `repos_roots` entrypoint, with fuzzy
    directory-name matching in the picker. Duplicate names require a full path.
@@ -352,12 +358,19 @@ motley spawn --repo <r> [--ticket <t>] [--branch <b>] [--base <b>]
 4. Render the blueprint into `members/<id>.prompt.md`.
 5. Create the worktree (§5.1).
 6. Write the manifest.
-7. Start tmux detached, with the worktree CWD and `MOTLEY_MEMBER=<id>`:
+7. For tmux, start detached, with the worktree CWD and `MOTLEY_MEMBER=<id>`:
    `tmux new-session -d -s <session> -c <worktree> -e MOTLEY_MEMBER=<id>
    "motley exec-agent <id>; exec $SHELL -l"`.
 8. Set motley options, color and initial `starting` status.
-9. Default inside tmux: switch the client. Default outside: exec tmux attach.
+9. For tmux: default inside tmux is to switch the client. Default outside: exec tmux attach.
    `--detach` leaves the session detached; explicit mode flags select behavior.
+
+For `--terminal ghostty`, start the foreground runner directly in a new Ghostty
+window at the new worktree. Preserve agent arguments, prompt, permission choices
+and reporting environment; clear TMUX/TMUX_PANE. Never create or attach a tmux
+session. Window launch failures retain the manifest and worktree for Revive.
+A live direct agent must be stopped in its original window before retirement or
+termination; Revive reuses its worktree and original destination.
 
 `motley exec-agent <id>` builds adapter argv and execs the agent, reading the
 prompt from the file and avoiding shell quoting of prompt text. Agent exit leaves
@@ -615,7 +628,7 @@ Only expose keys once their capability is implemented.
 | P | PR menu: create with gh pr create --fill, mark ready, open |
 | u | Refresh selected member's GitHub data |
 | U | Refresh all members' GitHub data, one gh call per repository |
-| s | Spawn form |
+| s | Main-menu Spawn agent: agent type, launch destination, new-worktree setup |
 | a | Adopt a non-member tmux session |
 | e | Edit name, ticket, crew and color |
 | G | Crew manager: add, edit, delete, recolor |

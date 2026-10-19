@@ -47,7 +47,7 @@ func TestApplicationScriptingIsConfinedToGhosttyLaunch(t *testing.T) {
 		// Keep the exception in one launcher and its GUI-boundary tests;
 		// imported-session focus and all other application scripting stay banned.
 		switch filepath.ToSlash(rel) {
-		case "internal/tmux/ghostty.go", "cmd/motley/ghostty_test.go":
+		case "internal/terminal/ghostty.go", "cmd/motley/ghostty_test.go":
 			return nil
 		}
 		data, err := os.ReadFile(path)

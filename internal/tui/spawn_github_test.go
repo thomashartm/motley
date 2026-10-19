@@ -24,7 +24,7 @@ func identityForm(t *testing.T) Model {
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 140, Height: 40})
 	m.github = fakeGitHub("", nil)
 	m.spawn = &spawnForm{step: identityStep, fields: inputs("412", "FX", "feature", "feature/api-412-fx")}
-	m.spawn.opts.Repo = "api"
+	m.spawn.opts.Repo, m.spawn.opts.Agent = "api", "claude"
 	return m
 }
 
@@ -46,7 +46,7 @@ func TestSpawnLooksUpIssueThenOffersCrew(t *testing.T) {
 		t.Fatalf("crew step:\n%s", view)
 	}
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
-	if m.spawn.step != agentStep || !m.spawn.opts.CreateCrew || m.spawn.opts.Issue != issue || !m.spawn.opts.NoGH {
+	if m.busyText != "Loading blueprints…" || !m.spawn.opts.CreateCrew || m.spawn.opts.Issue != issue || !m.spawn.opts.NoGH {
 		t.Fatalf("create choice: %+v", m.spawn.opts)
 	}
 }
@@ -72,7 +72,7 @@ func TestSpawnCrewStepMatchAndSkip(t *testing.T) {
 				m = update(m, tea.KeyMsg{Type: tea.KeyDown})
 			}
 			m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
-			if m.spawn.step != agentStep || !tt.check(m.spawn.opts) {
+			if m.busyText != "Loading blueprints…" || !tt.check(m.spawn.opts) {
 				t.Fatalf("%+v", m.spawn.opts)
 			}
 		})
@@ -83,15 +83,15 @@ func TestSpawnLookupFailureWarnsAndContinues(t *testing.T) {
 	m, _ := submitIdentity(t, identityForm(t))
 	m = update(m, issueLooked{err: gh.ErrAuth})
 	view := ansi.Strip(m.spawnView(30))
-	if m.busy || m.spawn.step != agentStep || !m.spawn.opts.NoGH || !strings.Contains(strings.Join(strings.Fields(view), " "), "Issue lookup skipped: GitHub CLI is not authenticated; run gh auth login") {
+	if !m.busy || m.busyText != "Loading blueprints…" || !m.spawn.opts.NoGH || !strings.Contains(strings.Join(strings.Fields(view), " "), "Issue lookup skipped: GitHub CLI is not authenticated; run gh auth login") {
 		t.Fatalf("%d\n%s", m.spawn.step, view)
 	}
 }
 
-func TestSpawnIssueWithoutSuggestionGoesToAgent(t *testing.T) {
+func TestSpawnIssueWithoutSuggestionGoesToBlueprint(t *testing.T) {
 	m, _ := submitIdentity(t, identityForm(t))
 	m = update(m, issueLooked{issue: &member.IssueContext{Number: 412, Title: "Cache FX"}})
-	if m.spawn.step != agentStep || m.spawn.opts.Issue == nil || !m.spawn.opts.NoGH {
+	if m.busyText != "Loading blueprints…" || m.spawn.opts.Issue == nil || !m.spawn.opts.NoGH {
 		t.Fatalf("%d %+v", m.spawn.step, m.spawn.opts)
 	}
 }
@@ -110,8 +110,8 @@ func TestNonIssueTicketSkipsLookup(t *testing.T) {
 		m := identityForm(t)
 		m.spawn.fields[0].SetValue(ticket)
 		next, cmd := submitIdentity(t, m)
-		if cmd != nil || next.busy || next.spawn.step != agentStep {
-			t.Fatalf("ticket %q must go straight to the agent step", ticket)
+		if cmd == nil || !next.busy || next.busyText != "Loading blueprints…" {
+			t.Fatalf("ticket %q must go straight to blueprint discovery", ticket)
 		}
 	}
 }
@@ -124,7 +124,7 @@ func TestSpawnPreviewSummarisesIssueAndCrew(t *testing.T) {
 	if view := ansi.Strip(m.spawnView(30)); !strings.Contains(view, "api @ feat/412-fx · claude") || !strings.Contains(view, "#412 Cache FX · new crew Epic: FX\n> Launch") {
 		t.Fatal(view)
 	}
-	if m.spawn.preview.Height != m.contentHeight()-5 {
+	if m.spawn.preview.Height != m.contentHeight()-6 {
 		t.Fatalf("preview height %d ignores the context line (content %d)", m.spawn.preview.Height, m.contentHeight())
 	}
 	m.crews = []crew.Crew{{ID: "fx", Title: "FX crew", Color: "blue"}}
@@ -134,7 +134,7 @@ func TestSpawnPreviewSummarisesIssueAndCrew(t *testing.T) {
 		t.Fatal(view)
 	}
 	m = update(m, spawnPrepared{plan: member.Prepared{Manifest: member.Manifest{Repo: "api", Branch: "feat/412-fx", Agent: "claude"}}})
-	if view := ansi.Strip(m.spawnView(30)); strings.Contains(view, "crew") || m.spawn.preview.Height != m.contentHeight()-4 {
+	if view := ansi.Strip(m.spawnView(30)); strings.Contains(view, "crew") || m.spawn.preview.Height != m.contentHeight()-5 {
 		t.Fatalf("plain spawn has no context line (height %d):\n%s", m.spawn.preview.Height, view)
 	}
 }

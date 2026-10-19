@@ -1,8 +1,9 @@
-package tmux
+package terminal
 
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -11,27 +12,27 @@ import (
 	"github.com/thomashartm/motley/internal/shellx"
 )
 
-// OpenGhostty attaches a new macOS Ghostty window to an already-created
-// session. A window failure must never cause the caller to spawn a second agent.
-func OpenGhostty(id, worktree string) error {
+// OpenGhostty starts a foreground runner in a new macOS Ghostty window.
+func OpenGhostty(id, worktree string, resume bool) error {
 	if runtime.GOOS != "darwin" {
 		return fmt.Errorf("opening a Ghostty window requires macOS")
 	}
-	bin, err := exec.LookPath("tmux")
+	bin, err := os.Executable()
 	if err != nil {
 		return err
 	}
-	// Ghostty is a separate process, potentially with a different TMUX value.
-	// Resolve this session's socket before crossing the application boundary.
-	socket, err := run("display-message", "-p", "-t", "="+SessionName(id)+":", "#{socket_path}")
-	if err != nil {
-		return err
+	command := "/usr/bin/env -u TMUX -u TMUX_PANE"
+	// Finder-launched Ghostty need not share the launching terminal's environment.
+	// Preserve agent configuration and hook/state discovery without importing tmux.
+	for _, key := range []string{"PATH", "HOME", "SHELL", "XDG_RUNTIME_DIR", "XDG_STATE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR"} {
+		if value, ok := os.LookupEnv(key); ok {
+			command += " " + shellx.Quote(key+"="+value)
+		}
 	}
-	socket = strings.TrimSpace(socket)
-	if socket == "" {
-		return fmt.Errorf("cannot find the tmux socket for %s", id)
+	command += " " + shellx.Quote("MOTLEY_MEMBER="+id) + " " + shellx.Quote(bin) + " run-direct " + shellx.Quote(id)
+	if resume {
+		command += " --resume"
 	}
-	command := "/usr/bin/env -u TMUX -u TMUX_PANE " + shellx.Quote(bin) + " -S " + shellx.Quote(socket) + " attach-session -t " + shellx.Quote("="+SessionName(id))
 	// Values travel as argv, not AppleScript source. Shell quoting keeps paths
 	// containing spaces, quotes or metacharacters literal in Ghostty's command.
 	const script = `on run argv

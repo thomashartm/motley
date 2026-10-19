@@ -2007,3 +2007,42 @@ Published PR #73: https://github.com/thomashartm/motley/pull/73
 Implementation commit: `4649535`. Focused TUI/tmux/member suites and diff checks
 passed again before publication. Hosted CI is pending; no installation or merge
 performed.
+
+## Main-menu agent launch and direct Ghostty destination — 2026-10-19
+
+Follow-up to merged PR #73 on `feature/agent-launch-menu`, based on main
+`9307659`. The user clarified that the destination belongs in the main-menu
+spawn flow and that Ghostty must run the agent directly, without tmux. Both
+choices must create a new worktree.
+
+**Spawn agent (s)** now starts with agent type, then **New Ghostty window** or
+**tmux session**, followed by repository, explicit source branch, task, optional
+crew/template, authorization and preview. The menu item and both initial
+selectors support mouse activation. The preview shows the selected destination
+with normal Launch/Edit/Cancel controls. README and advanced usage describe this
+flow; the requirements exception now permits direct Ghostty launch and revive.
+
+The Ghostty destination starts a foreground agent runner in the new worktree,
+preserving arguments, prompt, permissions and configuration paths while clearing
+tmux context. A process-lifetime lock and hook status files keep the agent
+visible without tmux. Cleanup refuses a live direct agent; stop it in its own
+window first. Revive opens its original destination in the same worktree. A
+failed window launch retains the member and worktree for recovery.
+
+Validation: full `make test` passed (CLI/integration package 174.798s), including
+the main-menu PTY flow, existing tmux terminal flows, direct Claude/Codex/OpenCode
+lifecycles, and failed-window recovery with the original reviewed prompt. A
+sentinel fails any tmux call during the direct flow. The opt-in
+`MOTLEY_TEST_GHOSTTY=1` test on Ghostty 1.3.1 opened a real new window and ran a
+fixture agent directly in its new worktree. Go vet, golangci-lint v2.14.0 (zero
+issues), native build, macOS/Linux amd64/arm64 builds and `git diff --check`
+passed. TUI checks include keyboard/mouse launch selection, direct-only polling
+without tmux, and a visible Launch control at 60x10.
+
+Independent review found an initial-launch retry that could lose the saved
+prompt; it is fixed, regression-tested and re-reviewed. The first full suite
+also found a stale assertion for the renamed menu item; the corrected test and
+final full suite passed. No installed binary has been replaced.
+
+Published implementation `57c8e47` in PR #74:
+https://github.com/thomashartm/motley/pull/74. Hosted CI is pending.

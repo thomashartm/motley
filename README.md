@@ -51,11 +51,14 @@ Rerun the installer to update from `main`, then reopen Motley.
 ### Start a new agent
 
 1. Put your repository under `~/projects`, or [configure your repository directories](#configuration).
-2. Run `mtly` and press **s**.
-3. Choose a repository, task and agent. Select **feature** or **fix** for the branch
-   prefix; for example, `feature/backend-2991-allow-exempt-tax-code`.
-4. Review and launch.
-5. Select the member and press **Enter** to open it.
+2. Run `mtly`, press **Home**, and select **Spawn agent (s)** from the main menu.
+   The **s** shortcut opens the same flow.
+3. Choose **Claude**, **Codex** or **OpenCode**, then **New Ghostty window** or
+   **tmux session**. Ghostty runs the agent directly, without tmux (macOS only).
+4. Choose the repository and source branch, then name the task and its new branch.
+   Choose a prompt template and authorization level, and review the preview.
+5. Select **Launch**. Both destinations create a **new worktree**. Ghostty opens
+   the agent there in a new window; for tmux, select the member and press **Enter**.
 
 **Launching creates a worktree and pushes a new branch.** The repository needs an
 `origin` remote and a local `main` or `master` branch.
@@ -133,7 +136,7 @@ Open targets the primary conversation; **Switch tracked session (S)** changes
 that target while keeping linked conversations monitored. Terminate and Retire
 stop all explicitly tracked Claude conversations.
 
-The **ACC** column shows **TMX** for a Motley-managed tmux connection, **EXT**
+The **ACC** column shows **GHO** for a direct Ghostty agent, **TMX** for a Motley-managed tmux connection, **EXT**
 for an externally attached session, or **MIX** when a member tracks both.
 An external session may itself run in another tmux pane. **MOD** shows **FG**,
 **BG**, or **F+B** independently of access. Details explains each conversation;

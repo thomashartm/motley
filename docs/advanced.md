@@ -16,7 +16,8 @@ Use the member ID printed by `spawn` or listed by `ls`.
 | --- | --- |
 | `--repo api` | Select `api` directly under any configured `repos_roots` entrypoint. |
 | `--agent claude\|codex\|opencode` | Choose an agent; Claude is the default without a blueprint. |
-| `--detach` | Launch without attaching. |
+| `--terminal ghostty\|tmux` | Open a direct Ghostty window on macOS, or use tmux (CLI default). Both create a new worktree. |
+| `--detach` | Launch a tmux session without attaching. |
 | `--crew <crew-id>` | Assign the member to a crew. |
 | `--blueprint <name>` | Start with a saved prompt template. |
 | `--no-gh` | Skip the GitHub issue lookup. |
@@ -33,12 +34,24 @@ then other branches. Type to filter all local and fetched remote branches.
 Local selections include unpushed commits; remote selections fetch that branch
 before creating the worktree. The preview shows the chosen source.
 
-On macOS, use **←/→** in the prompt preview to select **Launch in new Ghostty
-window**, then press **Enter**. Motley creates the worktree and agent session,
-opens a new Ghostty window attached to it, and keeps the overview open. This
-requires Ghostty 1.3 or later with AppleScript enabled; macOS may request
-Automation access. If the window cannot open, the session remains available and
-Motley shows an `mtly attach <member-id>` recovery command.
+In the main menu (**Home**), choose **Spawn agent (s)**. Select the agent type
+first, then the launch destination: **New Ghostty window** or **tmux session**.
+Continue through repository, source branch, task, template and authorization
+selection. The preview names the destination; **Launch** creates a new worktree
+and starts the selected agent there. The overview stays open.
+
+**New Ghostty window** runs the agent directly, without tmux. It requires macOS
+and Ghostty 1.3 or later with AppleScript enabled; macOS may request Automation
+access. The CLI equivalent is `mtly spawn --terminal ghostty` with the usual
+repository, branch and agent options. A failed window launch preserves the
+created worktree and member; fix the reported problem and run
+`mtly revive <member-id>` to retry in that same worktree.
+
+Direct agents appear with **GHO** access in the overview and report status through
+agent hooks. Use their original Ghostty window for interaction. Stop the agent
+there before using **Terminate** to archive the entry or **Retire** to remove its
+worktree. **Revive** starts it again in a new Ghostty window, resuming its saved
+conversation when available. Reply and Send to work tab are tmux controls.
 
 New branch suggestions use `feature/<repo>-<ticket>-<name>`.
 The ticket is optional; a pasted GitHub issue URL contributes only its issue
@@ -293,8 +306,10 @@ mtly retire <member-id> --keep-branch
   agents, archives history and removes the entry, keeping all files and branches.
   Already-stopped entries can be removed with the same confirmation. A stop
   failure keeps the entry and shows the error in the dialog for retry.
-- **Revive:** requires an active entry, an existing worktree and a missing Motley tmux session.
+- **Revive:** requires an active entry and its existing worktree. It reopens a
+  stopped direct agent in a new Ghostty window, or recreates a missing tmux session.
   If the agent ended but its tmux shell remains, restart it in that shell.
+- **Direct Ghostty cleanup:** stop the agent in its window before Terminate or Retire.
 - **Resume:** uses the last recorded agent session ID; without one, starts fresh.
 - **Retire managed work:** removes the session, worktree and local branch, except
   protected branches or when `--keep-branch` is used. Remote branches remain.

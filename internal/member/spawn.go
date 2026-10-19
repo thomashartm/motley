@@ -17,11 +17,13 @@ import (
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/gitx"
 	"github.com/thomashartm/motley/internal/state"
+	"github.com/thomashartm/motley/internal/terminal"
 	"github.com/thomashartm/motley/internal/tmux"
 	"github.com/thomashartm/motley/internal/worktree"
 )
 
 type SpawnOptions struct {
+	LaunchTarget                                                    string
 	SourceRef                                                       string // Exact local or remote ref explicitly selected in the dialog.
 	Repo, Branch, Agent, Ticket, Name, Crew, Color, Blueprint, Mode string
 	Vars                                                            []string
@@ -36,7 +38,14 @@ type SpawnOptions struct {
 }
 
 func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
-	for _, tool := range []string{"git", "tmux", "cp"} {
+	if err := ValidateLaunchTarget(opts.LaunchTarget); err != nil {
+		return Prepared{}, err
+	}
+	tools := []string{"git", "cp"}
+	if opts.LaunchTarget != "ghostty" {
+		tools = append(tools, "tmux")
+	}
+	for _, tool := range tools {
 		if _, err := exec.LookPath(tool); err != nil {
 			return Prepared{}, fmt.Errorf("%s is required: %w", tool, err)
 		}
@@ -158,7 +167,7 @@ func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
 	if name == "" {
 		name = filepath.Base(opts.Branch)
 	}
-	m := Manifest{Schema: 1, Name: name, Repo: opts.Repo, RepoPath: repo, Worktree: path, Branch: opts.Branch, Base: base, RemoteURL: remote, Ticket: opts.Ticket, Agent: opts.Agent, Mode: opts.Mode, Blueprint: opts.Blueprint, AgentArgs: args, Crew: opts.Crew, Color: opts.Color}
+	m := Manifest{LaunchTarget: opts.LaunchTarget, Schema: 1, Name: name, Repo: opts.Repo, RepoPath: repo, Worktree: path, Branch: opts.Branch, Base: base, RemoteURL: remote, Ticket: opts.Ticket, Agent: opts.Agent, Mode: opts.Mode, Blueprint: opts.Blueprint, AgentArgs: args, Crew: opts.Crew, Color: opts.Color}
 	var issueData blueprint.Issue
 	if issue != nil {
 		m.Issue = &IssueRef{Title: issue.Title, URL: issue.URL}
@@ -196,6 +205,9 @@ type Prepared struct {
 
 func SpawnPrepared(p Prepared, progress io.Writer) (Manifest, error) {
 	m := p.Manifest
+	if err := ValidateLaunchTarget(m.LaunchTarget); err != nil {
+		return Manifest{}, err
+	}
 	if err := blueprint.ValidatePrompt(p.Prompt); err != nil {
 		return Manifest{}, err
 	}
@@ -219,9 +231,12 @@ func SpawnPrepared(p Prepared, progress io.Writer) (Manifest, error) {
 	if err != nil {
 		return Manifest{}, err
 	}
-	sessions, err := tmux.Sessions()
-	if err != nil {
-		return Manifest{}, err
+	var sessions []tmux.Session
+	if m.LaunchTarget != "ghostty" {
+		sessions, err = tmux.Sessions()
+		if err != nil {
+			return Manifest{}, err
+		}
 	}
 	id, name, err := identity(SpawnOptions{Repo: m.Repo, Branch: m.Branch, Ticket: m.Ticket, Name: m.Name}, manifests, sessions)
 	if err != nil {
@@ -259,8 +274,14 @@ func SpawnPrepared(p Prepared, progress io.Writer) (Manifest, error) {
 	if err := saveManifest(dir, m); err != nil {
 		return Manifest{}, fmt.Errorf("worktree retained at %s; manifest could not be saved: %w", m.Worktree, err)
 	}
+	if m.LaunchTarget == "ghostty" {
+		if err := terminal.OpenGhostty(id, m.Worktree, false); err != nil {
+			return m, fmt.Errorf("worktree and manifest retained for %s; Ghostty startup failed (retry with motley revive %s): %w", id, id, err)
+		}
+		return m, nil
+	}
 	if err := tmux.Start(id, m.Worktree, m.Ticket, m.Agent); err != nil {
-		return Manifest{}, fmt.Errorf("worktree and manifest retained for %s; tmux startup failed: %w", id, err)
+		return m, fmt.Errorf("worktree and manifest retained for %s; tmux startup failed: %w", id, err)
 	}
 	return m, applyAppearance(m, crews)
 }

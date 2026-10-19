@@ -271,6 +271,9 @@ func ExternalTerminal(id string) error {
 	if err != nil {
 		return err
 	}
+	if m.LaunchTarget == "ghostty" {
+		return directTerminal(m)
+	}
 	s, err := externalSession(m)
 	if err != nil {
 		return err
@@ -436,6 +439,9 @@ func PrepareOpen(id string) error {
 	m, err := Load(dir, id)
 	if err != nil {
 		return err
+	}
+	if m.LaunchTarget == "ghostty" {
+		return directTerminal(m)
 	}
 	if m.CodexSession == "" {
 		return nil

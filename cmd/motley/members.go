@@ -23,8 +23,8 @@ func spawnCommand() *cobra.Command {
 	var detach bool
 	cmd := &cobra.Command{
 		Use:   "spawn --repo <name> --branch <new-branch>",
-		Short: "Create a worktree and start a coding agent in tmux",
-		Long:  "Create a new branch from origin/main (or origin/master), push it, copy local\nartifacts and start an agent. Switch inside tmux; attach outside.\nUse --detach to leave the session running in the background.\nA numeric --ticket looks up the GitHub issue with gh (title, body, URL) for\nblueprints and suggests a crew from its parent issue or milestone.",
+		Short: "Create a worktree and start a coding agent in Ghostty or tmux",
+		Long:  "Create a new branch from origin/main (or origin/master), push it, copy local\nartifacts and start an agent. --terminal ghostty opens a new Ghostty window\nwith the agent running directly; --terminal tmux (default) creates a tmux session.\nFor tmux, switch inside tmux or attach outside; --detach leaves it in the background.\nA numeric --ticket looks up the GitHub issue with gh (title, body, URL) for\nblueprints and suggests a crew from its parent issue or milestone.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := config.Load()
@@ -39,7 +39,11 @@ func spawnCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Created %s\nWorktree: %s\nAttach: motley attach %s\n", m.ID, m.Worktree, m.ID); err != nil {
+			destination := "Attach: motley attach " + m.ID
+			if m.LaunchTarget == "ghostty" {
+				destination = "Terminal: new Ghostty window"
+			}
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Created %s\nWorktree: %s\n%s\n", m.ID, m.Worktree, destination); err != nil {
 				return err
 			}
 			// Notes follow the spawn because the crew hint names the new member id.
@@ -50,7 +54,7 @@ func spawnCommand() *cobra.Command {
 					return err
 				}
 			}
-			if detach {
+			if detach || m.LaunchTarget == "ghostty" {
 				return nil
 			}
 			return jump(m.ID)
@@ -60,6 +64,7 @@ func spawnCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.Branch, "branch", "", "New branch name (required)")
 	cmd.Flags().StringVar(&opts.Crew, "crew", "", "Crew id")
 	cmd.Flags().StringVar(&opts.Color, "color", "", "Colour override (otherwise inherit crew colour)")
+	cmd.Flags().StringVar(&opts.LaunchTarget, "terminal", "tmux", "Launch destination: ghostty or tmux")
 	cmd.Flags().StringVar(&opts.Agent, "agent", "", "Agent: claude, codex or opencode (default: blueprint agent, then claude)")
 	cmd.Flags().StringVar(&opts.Mode, "mode", "", "Authorization level for the selected agent (default: agent/blueprint settings); claude: "+agents.ModeNames("claude")+"; codex: "+agents.ModeNames("codex")+"; opencode: "+agents.ModeNames("opencode"))
 	cmd.Flags().StringVar(&opts.Blueprint, "blueprint", "", "Blueprint name")
@@ -189,6 +194,10 @@ func execAgentCommand() *cobra.Command {
 			}
 			if err := os.Chdir(m.Worktree); err != nil {
 				return err
+			}
+			if m.LaunchTarget == "ghostty" {
+				_ = os.Unsetenv("TMUX")
+				_ = os.Unsetenv("TMUX_PANE")
 			}
 			if err := os.Setenv("MOTLEY_MEMBER", m.ID); err != nil {
 				return err
