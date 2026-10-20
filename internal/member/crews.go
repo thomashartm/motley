@@ -11,6 +11,7 @@ import (
 	"github.com/thomashartm/motley/internal/crew"
 	"github.com/thomashartm/motley/internal/palette"
 	"github.com/thomashartm/motley/internal/state"
+	"github.com/thomashartm/motley/internal/terminal"
 	"github.com/thomashartm/motley/internal/tmux"
 )
 
@@ -33,7 +34,15 @@ func validateIdentity(crewID, color string, crews []crew.Crew) error {
 }
 func applyAppearance(m Manifest, crews []crew.Crew) error {
 	if m.LaunchTarget == "ghostty" {
-		return nil
+		dir, err := state.MembersDir()
+		if err != nil {
+			return err
+		}
+		alive, err := terminal.Alive(dir, m.ID)
+		if err != nil || !alive {
+			return err
+		}
+		return terminal.UpdateGhostty(dir, m.ID, ghosttyTitle(m, crews), false)
 	}
 	c, _ := crew.Find(crews, m.Crew)
 	return tmux.Appearance(m.ID, m.Name, m.Ticket, m.Agent, c.Title, Color(m, crews))
@@ -47,20 +56,25 @@ func saveManifest(dir string, m Manifest) error {
 }
 func syncAppearance(ms []Manifest, crews []crew.Crew) error {
 	managed := []Manifest{}
+	var failures []error
 	for _, m := range ms {
-		if m.LaunchTarget != "ghostty" {
+		if m.LaunchTarget == "ghostty" {
+			if err := applyAppearance(m, crews); err != nil {
+				failures = append(failures, fmt.Errorf("%s: %w", m.ID, err))
+			}
+		} else {
 			managed = append(managed, m)
 		}
 	}
 	ms = managed
-	if len(ms) == 0 {
-		return nil
+	var sessions []tmux.Session
+	if len(ms) > 0 {
+		var err error
+		sessions, err = tmux.Sessions()
+		if err != nil {
+			failures = append(failures, err)
+		}
 	}
-	sessions, err := tmux.Sessions()
-	if err != nil {
-		return fmt.Errorf("saved changes; cannot refresh live sessions: %w", err)
-	}
-	var failures []error
 	for _, m := range ms {
 		for _, s := range sessions {
 			if s.Name == tmux.SessionName(m.ID) && s.MemberID == m.ID {

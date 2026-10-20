@@ -2046,3 +2046,43 @@ final full suite passed. No installed binary has been replaced.
 
 Published implementation `57c8e47` in PR #74:
 https://github.com/thomashartm/motley/pull/74. Hosted CI is pending.
+
+
+## Ghostty tabs, window selection and spawn layout — 2026-10-19
+
+Implemented on `feature/ghostty-tabs` in the dedicated
+`/Users/thomas/worktrees/motley/feature-ghostty-tabs` worktree.
+
+- Ghostty spawns open a tab in a selected existing window, defaulting to the
+  current window. The picker shows window titles and tab counts, highlights
+  the selected row, offers **p** to preview that window and **r** to refresh,
+  and retains an explicit **New window** choice. Preview brings the window
+  forward; return to Motley to confirm. Ghostty has no native blink action.
+- Tab titles use the member name prefixed by the resolved colour marker.
+  Member colour overrides crew colour; editing either refreshes live titles.
+  Recorded terminal IDs let Open agent focus the exact tab without starting
+  another agent. Closed IDs fail explicitly. Older direct sessions acquire
+  this support on their next launch; imported sessions remain unchanged.
+- The spawn dialog uses spaced choices, aligned fields, labelled search,
+  visible errors, and a scrollable final review with persistent action buttons.
+  Wrapped choices share mouse hit testing with their rendered rows.
+- CLI `--terminal ghostty` defaults to the front window (creates a window if
+  none exists); `--ghostty-window new` or an explicit window ID overrides it.
+  Revive opens a new tab in the current window and resumes the recorded session.
+
+Validation: focused Ghostty lifecycle/title/colour tests, TUI layout and
+navigation tests, `go vet ./...`, golangci-lint v2.14.0 (0 issues), and
+`make cross-build` passed. The opt-in desktop test passed against Ghostty 1.3.1:
+window discovery/preview, adding a tab to the selected existing window, quoted
+titles, live crew recolouring, focusing without duplication, and refusal of
+missing window/terminal IDs. Full `make test` passed, including the installer,
+uninstaller, plugin and Go suites (CLI integration package: 184.102 seconds).
+The terminal spawn test now asserts the labelled review fields; narrow-input
+coverage verifies that long values keep the cursor visible.
+
+Published implementation `83d48ed` in PR #75:
+https://github.com/thomashartm/motley/pull/75. Hosted CI is pending.
+
+Built executable: `bin/mtly` in this worktree. Run it without arguments to open
+the overview against existing Motley state; running agents can keep running.
+The installed binary has not been replaced, and the PR has not been merged.

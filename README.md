@@ -53,12 +53,21 @@ Rerun the installer to update from `main`, then reopen Motley.
 1. Put your repository under `~/projects`, or [configure your repository directories](#configuration).
 2. Run `mtly`, press **Home**, and select **Spawn agent (s)** from the main menu.
    The **s** shortcut opens the same flow.
-3. Choose **Claude**, **Codex** or **OpenCode**, then **New Ghostty window** or
+3. Choose **Claude**, **Codex** or **OpenCode**, then **New Ghostty tab** or
    **tmux session**. Ghostty runs the agent directly, without tmux (macOS only).
+   For Ghostty, choose an existing window (the current one is selected first),
+   or **New window**. Press **p** to bring the highlighted window to the front;
+   return to Motley to confirm your choice. **r** refreshes the window list.
 4. Choose the repository and source branch, then name the task and its new branch.
    Choose a prompt template and authorization level, and review the preview.
 5. Select **Launch**. Both destinations create a **new worktree**. Ghostty opens
-   the agent there in a new window; for tmux, select the member and press **Enter**.
+   the agent there in a new tab; for tmux, select the member and press **Enter**.
+
+Ghostty tab titles follow the member name, prefixed by its colour marker, such
+as **🔵 Payments agent**. Editing the member or its crew updates the title; a
+member colour overrides its crew colour. **Open agent** focuses the recorded
+tab. Sessions launched before tab tracking was added acquire this support
+after they stop and you use **Revive**.
 
 **Launching creates a worktree and pushes a new branch.** The repository needs an
 `origin` remote and a local `main` or `master` branch.

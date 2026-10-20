@@ -105,7 +105,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.mouse(msg)
 	case importLoaded, importDone:
 		return m.importMessage(msg)
-	case spawnLoaded, spawnSourcesLoaded, spawnPrepared, spawnProgress, spawnFinished, promptEdited, issueLooked:
+	case spawnLoaded, spawnSourcesLoaded, spawnWindowsLoaded, spawnWindowPreviewed, spawnPrepared, spawnProgress, spawnFinished, promptEdited, issueLooked:
 		return m.spawnMessage(msg)
 	case tick:
 		return m, m.poll
@@ -215,7 +215,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.spawn != nil && m.spawn.step == previewStep {
 			m.spawn.preview.Width = m.detailWidth()
 			m.spawn.preview.Height = m.previewHeight(m.contentHeight())
-			m.spawn.preview.SetContent(ansi.Hardwrap(multiline(m.spawn.plan.Prompt), m.detailWidth(), true))
+			m.spawn.preview.SetContent(m.spawnPreviewContent())
 		}
 		m.updateDetail()
 	case identitySaved:

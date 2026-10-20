@@ -18,7 +18,20 @@ import (
 
 func fakeGhostty(t *testing.T, f *memberFixture, fail bool) {
 	t.Helper()
-	script := "#!/bin/sh\ncat > /dev/null\nprintf '%s' \"$2\" > \"$HOME/window-directory\"\nprintf '%s' \"$3\" > \"$HOME/window-command\"\n"
+	script := `#!/bin/sh
+cat > /dev/null
+if [ "$1" = -l ]; then
+  printf '[{"id":"fixture-window","name":"Work","tabs":2,"current":true}]\n'
+elif [ "$2" = fixture-terminal ]; then
+  printf '%s\n' "$3" "$4" > "$HOME/tab-action"
+else
+  printf '%s' "$2" > "$HOME/window-directory"
+  printf '%s' "$3" > "$HOME/window-command"
+  printf '%s' "$4" > "$HOME/tab-title"
+  printf '%s' "$5" > "$HOME/tab-window"
+  printf 'fixture-terminal\n'
+fi
+`
 	if fail {
 		script += "echo 'Automation permission denied' >&2\nexit 1\n"
 	}
@@ -94,7 +107,7 @@ func TestDirectGhosttyLifecycle(t *testing.T) {
 			if err != nil || !strings.Contains(string(events), "direct-session") {
 				t.Fatalf("events: %s %v", events, err)
 			}
-			for _, args := range [][]string{{"retire", id, "--force"}, {"revive", id}, {"attach", id}, {"switch", id}} {
+			for _, args := range [][]string{{"retire", id, "--force"}, {"revive", id}} {
 				out, err := exec.Command(bin, args...).CombinedOutput()
 				if err == nil || !strings.Contains(string(out), "Ghostty") {
 					t.Fatalf("unsafe action %v: %s %v", args, out, err)
@@ -235,6 +248,7 @@ func TestMainMenuStartsDirectGhostty(t *testing.T) {
 	waitText(0, "No members yet")
 	send("s", "Agent")
 	send("\r", "Launch destination")
+	send("\r", "Current · Work")
 	send("\r", "> api")
 	send("api\r", "Source branch")
 	send("main\r", "Ticket and name")
@@ -252,4 +266,182 @@ func TestMainMenuStartsDirectGhostty(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(f.home, "tmux-called")); !os.IsNotExist(err) {
 		t.Fatal("direct menu called tmux", err)
 	}
+}
+
+func TestGhosttyTabIdentity(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Ghostty requires macOS")
+	}
+	f := newMemberFixture(t, buildLifecycleBinary(t), "main")
+	fakeGhostty(t, f, false)
+	f.motley("crew", "add", "--title", "Payments", "--color", "blue")
+	f.motley("spawn", "--repo", "api", "--branch", "feature/tab-identity", "--terminal", "ghostty", "--crew", "payments", "--name", "Payments agent", "--ghostty-window", "fixture-window", "--no-gh")
+	id := "feature-tab-identity"
+	read := func(name string) string {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(f.home, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	if got := read("tab-window"); got != "fixture-window" {
+		t.Fatalf("window choice lost: %q", got)
+	}
+	if got := read("tab-title"); got != "🔵 Payments agent" {
+		t.Fatalf("launch title: %q", got)
+	}
+	dir := filepath.Join(f.state, "motley/members")
+	lock, err := terminal.Acquire(dir, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lock.Close() }()
+	name := `Payments "quoted" $(literal)`
+	if err := member.EditIdentity(id, member.IdentityEdit{Name: &name}); err != nil {
+		t.Fatal(err)
+	}
+	if got := read("tab-action"); got != "🔵 "+name+"\nfalse\n" {
+		t.Fatalf("rename: %q", got)
+	}
+	f.motley("crew", "edit", "payments", "--color", "red")
+	if got := read("tab-action"); got != "🔴 "+name+"\nfalse\n" {
+		t.Fatalf("crew recolor: %q", got)
+	}
+	color := "green"
+	if err := member.EditIdentity(id, member.IdentityEdit{Color: &color}); err != nil {
+		t.Fatal(err)
+	}
+	f.motley("crew", "edit", "payments", "--color", "purple")
+	if got := read("tab-action"); got != "🟢 "+name+"\nfalse\n" {
+		t.Fatalf("override: %q", got)
+	}
+	for _, action := range []string{"attach", "switch"} {
+		f.motley(action, id)
+		if got := read("tab-action"); got != "🟢 "+name+"\ntrue\n" {
+			t.Fatalf("focus: %q", got)
+		}
+	}
+	fakeGhostty(t, f, true)
+	name = "Saved despite unavailable Ghostty"
+	if err := member.EditIdentity(id, member.IdentityEdit{Name: &name}); err == nil || !strings.Contains(err.Error(), "saved changes") {
+		t.Fatalf("refresh error: %v", err)
+	}
+	if f.manifest(id).Name != name {
+		t.Fatal("lost saved identity")
+	}
+	if _, err := os.Stat(filepath.Join(f.home, "tmux-called")); !os.IsNotExist(err) {
+		t.Fatal("Ghostty identity invoked tmux", err)
+	}
+}
+
+// This test owns one disposable Ghostty window and closes only that window.
+func TestGhosttyLiveTabs(t *testing.T) {
+	if runtime.GOOS != "darwin" || os.Getenv("MOTLEY_TEST_GHOSTTY") != "1" {
+		t.Skip("set MOTLEY_TEST_GHOSTTY=1 on macOS for the desktop tab test")
+	}
+	f := newMemberFixture(t, buildLifecycleBinary(t), "main")
+	keep := filepath.Join(f.home, "keep-agent")
+	writeFixture(t, keep, "", 0600)
+	writeFixture(t, filepath.Join(f.home, "fake agents/claude"), "#!/bin/sh\nwhile [ -f \"$HOME/keep-agent\" ]; do sleep 0.1; done\n", 0755)
+	script := func(source string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command("osascript", append([]string{"-"}, args...)...)
+		cmd.Stdin = strings.NewReader(source)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("Ghostty test script: %s: %v", out, err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	win := script(`tell application "Ghostty"
+	set cfg to new surface configuration
+	set command of cfg to "/usr/bin/true"
+	set wait after command of cfg to true
+	set win to new window with configuration cfg
+	activate window win
+	return id of win
+end tell`)
+	t.Cleanup(func() {
+		_ = os.Remove(keep)
+		cmd := exec.Command("osascript", "-", win)
+		cmd.Stdin = strings.NewReader(`on run argv
+	tell application "Ghostty"
+		set matches to every window whose id is (item 1 of argv)
+		if (count of matches) is 1 then close window (item 1 of matches)
+	end tell
+end run`)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Errorf("close fixture window: %s %v", out, err)
+		}
+	})
+	windows, err := terminal.GhosttyWindows()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(windows) == 0 || windows[0].ID != win || !windows[0].Current || windows[0].Tabs != 1 {
+		t.Fatalf("window picker: %+v", windows)
+	}
+	if err := terminal.PreviewGhosttyWindow(win); err != nil {
+		t.Fatal(err)
+	}
+	f.motley("crew", "add", "--title", "Live", "--color", "blue")
+	f.motley("spawn", "--repo", "api", "--branch", "feature/live-tabs", "--name", "Payments agent", "--crew", "live", "--terminal", "ghostty", "--ghostty-window", win, "--no-gh")
+	id := "feature-live-tabs"
+	dir := filepath.Join(f.state, "motley/members")
+	eventually(t, func() bool { alive, _ := terminal.Alive(dir, id); return alive })
+	read := func() string {
+		return script(`on run argv
+	tell application "Ghostty"
+		set win to window id (item 1 of argv)
+		return ((count of tabs of win) as text) & "|" & (name of selected tab of win)
+	end tell
+end run`, win)
+	}
+	if got := read(); got != "2|🔵 Payments agent" {
+		t.Fatalf("new tab: %q", got)
+	}
+	name := `Payments "quoted" $(literal)`
+	if err := member.EditIdentity(id, member.IdentityEdit{Name: &name}); err != nil {
+		t.Fatal(err)
+	}
+	f.motley("crew", "edit", "live", "--color", "green")
+	if got := read(); got != "2|🟢 "+name {
+		t.Fatalf("live identity: %q", got)
+	}
+	script(`on run argv
+	tell application "Ghostty" to select tab (tab 1 of window id (item 1 of argv))
+end run`, win)
+	f.motley("attach", id)
+	if got := read(); got != "2|🟢 "+name {
+		t.Fatalf("focus duplicated tab or failed: %q", got)
+	}
+	if err := terminal.PreviewGhosttyWindow("missing-window"); err == nil {
+		t.Fatal("missing window preview succeeded")
+	}
+	if err := terminal.OpenGhostty(dir, "missing-target", f.repo, "Missing target", "missing-window", false); err == nil {
+		t.Fatal("missing window silently fell back")
+	}
+	if got := read(); got != "2|🟢 "+name {
+		t.Fatalf("missing target changed the window: %q", got)
+	}
+	terminalFile := filepath.Join(dir, id+".ghostty-terminal")
+	recorded, err := os.ReadFile(terminalFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(terminalFile, []byte("missing-terminal"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := member.ExternalTerminal(id); err == nil {
+		t.Fatal("missing terminal focus succeeded")
+	}
+	if err := os.WriteFile(terminalFile, recorded, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Remove(keep); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, func() bool { alive, _ := terminal.Alive(dir, id); return !alive })
 }

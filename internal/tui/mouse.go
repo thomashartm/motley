@@ -42,17 +42,15 @@ func (m Model) navigationAvailable() bool {
 }
 
 func (m Model) mouseControls(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	if m.spawn != nil && !m.busy && (m.spawn.step == agentStep || m.spawn.step == destinationStep) {
+	if m.spawn != nil && !m.busy && len(m.spawnChoiceLabels()) > 0 {
 		if m.width < 60 || m.height < 10 || msg.Button != tea.MouseButtonLeft || msg.Action != tea.MouseActionPress || msg.X <= m.listWidth()+2 || msg.X >= m.width-1 {
 			return m, nil
 		}
-		count := 3
-		if m.spawn.step == destinationStep {
-			count = len(spawnDestinations())
-		}
+		height := m.contentHeight() - len(m.spawnMessages(m.detailWidth(), m.contentHeight()))
+		rows := m.spawnChoiceRows(m.detailWidth(), max(1, height-1))
 		index := m.panelContentY(msg.Y) - 1
-		if index >= 0 && index < count && index+1 < m.contentHeight() {
-			m.spawn.choice = index
+		if index >= 0 && index < len(rows) && rows[index].index >= 0 {
+			m.spawn.choice = rows[index].index
 			return m.updateSpawn(tea.KeyMsg{Type: tea.KeyEnter})
 		}
 		return m, nil

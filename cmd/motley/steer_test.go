@@ -107,7 +107,12 @@ func TestSpawnFormTerminal(t *testing.T) {
 	send("j", "> manual")
 	send("j", "> acceptEdits")
 	send("j", "> plan")
-	send("\r", "feature/api-412-fx-cache · claude · plan")
+	send("\r", "Permissions: plan")
+	for _, label := range []string{"Branch: feature/api-412-fx-cache", "Agent: claude"} {
+		if !strings.Contains(ansi.Strip(terminal.text()), label) {
+			t.Fatalf("preview hides %s", label)
+		}
+	}
 	send("e", "Edited prompt from terminal")
 	send("\r", "Created 412-fx-cache")
 	m := f.manifest("412-fx-cache")

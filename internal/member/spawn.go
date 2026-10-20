@@ -17,13 +17,13 @@ import (
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/gitx"
 	"github.com/thomashartm/motley/internal/state"
-	"github.com/thomashartm/motley/internal/terminal"
 	"github.com/thomashartm/motley/internal/tmux"
 	"github.com/thomashartm/motley/internal/worktree"
 )
 
 type SpawnOptions struct {
 	LaunchTarget                                                    string
+	GhosttyWindow                                                   string // Empty uses the front window; new creates a window.
 	SourceRef                                                       string // Exact local or remote ref explicitly selected in the dialog.
 	Repo, Branch, Agent, Ticket, Name, Crew, Color, Blueprint, Mode string
 	Vars                                                            []string
@@ -173,7 +173,7 @@ func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
 		m.Issue = &IssueRef{Title: issue.Title, URL: issue.URL}
 		issueData = blueprint.Issue{Title: issue.Title, Body: issue.Body, URL: issue.URL}
 	}
-	p := Prepared{Manifest: m, SourceRef: opts.SourceRef, HasPrompt: opts.Blueprint != "", Issue: issue, NewCrew: suggested, AutoCrew: autoCrew, Warnings: warnings}
+	p := Prepared{GhosttyWindow: opts.GhosttyWindow, Manifest: m, SourceRef: opts.SourceRef, HasPrompt: opts.Blueprint != "", Issue: issue, NewCrew: suggested, AutoCrew: autoCrew, Warnings: warnings}
 	if p.HasPrompt {
 		c, _ := crew.Find(crews, opts.Crew)
 		if suggested != nil {
@@ -190,10 +190,11 @@ func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
 // Prepared is a reviewed spawn plan. Preparing it does not create a worktree or
 // write state; the TUI can edit its prompt before launching the same snapshot.
 type Prepared struct {
-	SourceRef string
-	Manifest  Manifest
-	Prompt    string
-	HasPrompt bool
+	GhosttyWindow string
+	SourceRef     string
+	Manifest      Manifest
+	Prompt        string
+	HasPrompt     bool
 	// Issue is the looked-up issue, if any; Warnings explain skipped lookups.
 	Issue    *IssueContext
 	Warnings []string
@@ -275,7 +276,7 @@ func SpawnPrepared(p Prepared, progress io.Writer) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("worktree retained at %s; manifest could not be saved: %w", m.Worktree, err)
 	}
 	if m.LaunchTarget == "ghostty" {
-		if err := terminal.OpenGhostty(id, m.Worktree, false); err != nil {
+		if err := openGhostty(dir, m, p.GhosttyWindow, false); err != nil {
 			return m, fmt.Errorf("worktree and manifest retained for %s; Ghostty startup failed (retry with motley revive %s): %w", id, id, err)
 		}
 		return m, nil

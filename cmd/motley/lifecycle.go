@@ -45,7 +45,7 @@ func warnOpenPR(cmd *cobra.Command, id string) {
 }
 
 func reviveCommand() *cobra.Command {
-	return &cobra.Command{Use: "revive <id>", Short: "Restart a dead member in its existing worktree", Long: "Restart in the original launch destination: a new Ghostty window or a tmux session.\nResume the agent's latest recorded session.\nWithout a recorded session, start fresh without a prompt.\nArchived members are retired and cannot be revived.", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	return &cobra.Command{Use: "revive <id>", Short: "Restart a dead member in its existing worktree", Long: "Restart in the original launch destination: a new Ghostty tab or a tmux session.\nResume the agent's latest recorded session.\nWithout a recorded session, start fresh without a prompt.\nArchived members are retired and cannot be revived.", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		if err := member.Revive(args[0]); err != nil {
 			return err
 		}
@@ -58,7 +58,7 @@ func reviveCommand() *cobra.Command {
 			return err
 		}
 		if m.LaunchTarget == "ghostty" {
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Revived %s in a new Ghostty window.\n", args[0])
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Revived %s in a new Ghostty tab.\n", args[0])
 			return err
 		}
 		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Revived %s. Attach: motley attach %s\n", args[0], args[0])

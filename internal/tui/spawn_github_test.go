@@ -121,10 +121,10 @@ func TestSpawnPreviewSummarisesIssueAndCrew(t *testing.T) {
 	issue := &member.IssueContext{Number: 412, Title: "Cache FX"}
 	plan := member.Prepared{Manifest: member.Manifest{Repo: "api", Branch: "feat/412-fx", Agent: "claude"}, Issue: issue, NewCrew: &crew.Crew{Title: "Epic: FX"}}
 	m = update(m, spawnPrepared{plan: plan})
-	if view := ansi.Strip(m.spawnView(30)); !strings.Contains(view, "api @ feat/412-fx · claude") || !strings.Contains(view, "#412 Cache FX · new crew Epic: FX\n> Launch") {
+	if view := ansi.Strip(m.spawnView(30)); !strings.Contains(view, "Repository: api") || !strings.Contains(view, "Branch: feat/412-fx") || !strings.Contains(view, "Agent: claude") || !strings.Contains(view, "#412 Cache FX · new crew Epic: FX") || !strings.Contains(view, "[> Launch]") {
 		t.Fatal(view)
 	}
-	if m.spawn.preview.Height != m.contentHeight()-6 {
+	if m.spawn.preview.Height != m.previewHeight(m.contentHeight()) {
 		t.Fatalf("preview height %d ignores the context line (content %d)", m.spawn.preview.Height, m.contentHeight())
 	}
 	m.crews = []crew.Crew{{ID: "fx", Title: "FX crew", Color: "blue"}}
@@ -134,7 +134,7 @@ func TestSpawnPreviewSummarisesIssueAndCrew(t *testing.T) {
 		t.Fatal(view)
 	}
 	m = update(m, spawnPrepared{plan: member.Prepared{Manifest: member.Manifest{Repo: "api", Branch: "feat/412-fx", Agent: "claude"}}})
-	if view := ansi.Strip(m.spawnView(30)); strings.Contains(view, "crew") || m.spawn.preview.Height != m.contentHeight()-5 {
+	if view := ansi.Strip(m.spawnView(30)); strings.Contains(view, "crew") || m.spawn.preview.Height != m.previewHeight(m.contentHeight()) {
 		t.Fatalf("plain spawn has no context line (height %d):\n%s", m.spawn.preview.Height, view)
 	}
 }

@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-// REQUIREMENTS §0: session control stays in tmux. The explicit new-window
-// spawn action is the sole application-scripting exception.
-func TestApplicationScriptingIsConfinedToGhosttyLaunch(t *testing.T) {
+// REQUIREMENTS §0: Ghostty launch, recorded-tab focus and tab titles are
+// confined to one integration; imported terminal control stays forbidden.
+func TestApplicationScriptingIsConfinedToGhosttyIntegration(t *testing.T) {
 	forbidden := regexp.MustCompile(`(?i)osascript|applescript|tell application|NSAppleScript`)
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -44,7 +44,7 @@ func TestApplicationScriptingIsConfinedToGhosttyLaunch(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		// Keep the exception in one launcher and its GUI-boundary tests;
+		// Keep the exception in one integration and its GUI-boundary tests;
 		// imported-session focus and all other application scripting stay banned.
 		switch filepath.ToSlash(rel) {
 		case "internal/terminal/ghostty.go", "cmd/motley/ghostty_test.go":
@@ -56,7 +56,7 @@ func TestApplicationScriptingIsConfinedToGhosttyLaunch(t *testing.T) {
 		}
 		checked++
 		if match := forbidden.Find(data); match != nil {
-			t.Errorf("%s uses %q; application scripting is restricted to the Ghostty new-window launcher", rel, match)
+			t.Errorf("%s uses %q; application scripting is restricted to the Ghostty integration", rel, match)
 		}
 		return nil
 	})

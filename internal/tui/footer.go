@@ -119,6 +119,8 @@ func (m Model) footerGroups() (full, compact []string) {
 				return []string{"[Spawn] ↑↓/tab field · ←→ branch type", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ←→ branch type", "enter next · esc cancel"}
 			}
 			return []string{"[Spawn] ↑↓/tab field · ←→ cursor", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ↑↓ field", "enter next · esc cancel"}
+		case windowStep:
+			return []string{"[Window] ↑↓ select · p preview · r refresh", "[Actions] enter choose · esc cancel"}, []string{"↑↓ select · p preview", "enter choose · esc cancel"}
 		case agentStep, destinationStep, blueprintStep, modeStep, crewStep:
 			return []string{"[Spawn] ↑↓/jk select", "[Actions] enter next · esc cancel"}, []string{"[Spawn] ↑↓ select", "enter next · esc cancel"}
 		case previewStep:

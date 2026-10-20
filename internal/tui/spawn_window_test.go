@@ -30,7 +30,7 @@ func TestSpawnMenuStartsWithAgentAndDestination(t *testing.T) {
 		t.Fatal("destination must follow agent choice:", m.spawnView(20))
 	}
 	if runtime.GOOS == "darwin" {
-		if !strings.Contains(m.spawnView(20), "New Ghostty window") || !strings.Contains(m.spawnView(20), "tmux session") {
+		if !strings.Contains(m.spawnView(20), "New Ghostty tab") || !strings.Contains(m.spawnView(20), "tmux session") {
 			t.Fatal(m.spawnView(20))
 		}
 		m = arrow(m, tea.KeyDown)
@@ -81,12 +81,12 @@ func TestSpawnMenuAndDestinationsWithMouse(t *testing.T) {
 	if m.spawn == nil || m.spawn.step != agentStep {
 		t.Fatal("menu click did not start spawn")
 	}
-	m = click(m, m.listWidth()+4, 2+m.panelHeadingGap()+2) // codex
+	m = click(m, m.listWidth()+4, 2+m.panelHeadingGap()+3) // codex (spaced choices)
 	if m.spawn.step != destinationStep || m.spawn.opts.Agent != "codex" {
 		t.Fatal("agent click did not reach destination")
 	}
 	m = click(m, m.listWidth()+4, 2+m.panelHeadingGap()+1)
-	if !m.busy || m.spawn.step != repoStep {
+	if !m.busy || (m.spawn.step != repoStep && m.spawn.step != windowStep) {
 		t.Fatal("destination click did not open worktree setup")
 	}
 }
@@ -149,5 +149,38 @@ func TestSmallSpawnPreviewKeepsLaunchVisible(t *testing.T) {
 	}})
 	if !strings.Contains(m.spawnView(m.contentHeight()), "> Launch") {
 		t.Fatal("launch control hidden:", m.spawnView(m.contentHeight()))
+	}
+}
+
+func TestSpawnSelectsExistingGhosttyWindow(t *testing.T) {
+	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
+	m.spawn = &spawnForm{step: destinationStep, opts: member.SpawnOptions{Agent: "claude", LaunchTarget: "ghostty"}, query: inputs("")[0]}
+	m = update(m, spawnWindowsLoaded{windows: []terminal.GhosttyWindow{{ID: "front", Name: "Current work", Current: true}, {ID: "other", Name: "Other work"}}})
+	if m.spawn.step != windowStep || m.spawn.choice != 0 {
+		t.Fatal("current window must be selected first")
+	}
+	m = arrow(m, tea.KeyDown)
+	m = arrow(m, tea.KeyEnter)
+	if m.spawn.opts.GhosttyWindow != "other" || m.spawn.step != repoStep {
+		t.Fatal("window choice lost", m.spawn.opts)
+	}
+}
+
+func TestSpawnWindowPreviewRetainsSelection(t *testing.T) {
+	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
+	m.spawn = &spawnForm{step: windowStep, choice: 1, windows: []terminal.GhosttyWindow{{ID: "current"}, {ID: "chosen"}}}
+	next, cmd := m.Update(key("p"))
+	m = next.(Model)
+	if cmd == nil || !m.busy || m.spawn.choice != 1 {
+		t.Fatal("preview changed selection or did not run")
+	}
+	m = update(m, spawnWindowPreviewed{})
+	if m.busy || m.spawn.step != windowStep || m.spawn.choice != 1 {
+		t.Fatal("preview lost spawn state")
+	}
+	m.spawn.choice = 2
+	next, cmd = m.Update(key("p"))
+	if cmd != nil || next.(Model).busy {
+		t.Fatal("new window must not be created by preview")
 	}
 }
