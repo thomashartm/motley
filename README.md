@@ -111,51 +111,88 @@ Keep an overview in another terminal with `mtly monitor`.
 
 ## Stop, resume or remove
 
-Select a member and click **d Terminate** in the bottom bar, or press **d**.
-Press **3** for the other actions.
+Select a member. Press **d** to terminate, or **3** to open Actions.
+You can also click **d Terminate** in the bottom bar.
 
 | Action | Result |
 | --- | --- |
-| **Terminate (d)** | Stop the tracked agent and remove its entry from the active list. Archive history; keep all files and branches. Also removes already-stopped entries. |
+| **Terminate (d)** | Stop the agent and archive its entry. Keep files, branches and history. Also removes stopped entries. |
 | **Revive (r)** | Restart a stopped member in its existing worktree. |
-| **Retire (x)** | Archive the member; remove its managed worktree and usually its local branch. |
+| **Retire (x)** | Archive the member. Remove its managed worktree and usually its local branch. |
 
-Retirement refuses uncommitted or unpushed work. **Force discards that work.**
-Remote branches remain. Terminated and retired entries are archived and cannot
-be revived. Revive applies to stopped entries still in the active list.
+### Before removing a member
 
-**Imported sessions:** retirement keeps the checkout. It stops imported Claude;
-for imported Codex, it only closes Motley's client and removes the entry.
-Imported Codex has no Terminate action. [Lifecycle details →](docs/advanced.md#stop-resume-and-retire)
+- Retirement refuses uncommitted or unpushed work. **Force discards that work.**
+- Remote branches remain.
+- Only stopped members still in the active list can be revived.
+- Terminated and retired members are archived and cannot be revived.
 
-Select an imported Claude member, open **Actions (3)**, and choose
-**Reimport session (S)** to refresh its workspace or choose another conversation.
-Shift+S opens the same picker, even when the workspace is unchanged.
-You can also select **Reimport:** under **Add existing agent → Claude**, or run
-`mtly import <session-id>`. Reimport updates the existing member, preserving its
-name, crew and history while the conversation keeps running. Terminate and Retire
-then work with the new workspace.
+### Imported sessions
 
-To monitor foreground and background Claude conversations together, select a
-member and use **Track another session (A)**, or run
-`mtly import <session-id> --with <member-id>` (`--list` shows candidates).
-The list shows **FG**, **BG**, or **F+B**; Details shows each conversation's
-status. A member remains working while either conversation or its subagents work.
-Open targets the primary conversation; **Switch tracked session (S)** changes
-that target while keeping linked conversations monitored. Terminate and Retire
-stop all explicitly tracked Claude conversations.
+Retirement always keeps an imported checkout.
 
-The **ACC** column shows **GHO** for a direct Ghostty agent, **TMX** for a Motley-managed tmux connection, **EXT**
-for an externally attached session, or **MIX** when a member tracks both.
-An external session may itself run in another tmux pane. **MOD** shows **FG**,
-**BG**, or **F+B** independently of access. Details explains each conversation;
-**AG** badges are grey for every agent.
+| Agent | Terminate | Retire |
+| --- | --- | --- |
+| Claude | Stop the conversation and archive the entry. | Stop the conversation and archive the entry. |
+| Codex | Unavailable. | Close Motley's client and archive the entry. The agent keeps running. |
 
-Drag over text in the Actions panel to select it, or drag across list rows to
-select complete rows. **Ctrl+C** copies the selection, including full member
-titles in copied rows; **Esc** clears it. Selected text is highlighted and
-**CPY** / **CLR** hints appear below the panels. Ordinary clicks still activate
-actions and links when released. Without a selection, Ctrl+C closes the TUI.
+[Lifecycle details →](docs/advanced.md#stop-resume-and-retire)
+
+## Manage Claude conversations
+
+### Refresh or reimport a session
+
+Select an imported Claude member. Choose **Actions (3) → Reimport session (S)**,
+or press **Shift+S**, to refresh its workspace or choose another conversation.
+The picker also works when the workspace is unchanged.
+
+Other entry points:
+
+- **Add existing agent → Claude → Reimport:**
+- `mtly import <session-id>`
+
+Reimport keeps the member's name, crew and history. The conversation keeps
+running. Terminate and Retire then use the updated workspace.
+
+### Track multiple conversations
+
+Select a member and choose **Track another session (A)**.
+Or run `mtly import <session-id> --with <member-id>`; `--list` shows candidates.
+
+| Action or status | Behaviour |
+| --- | --- |
+| **Open** | Open the primary conversation. |
+| **Switch tracked session (S)** | Change the primary conversation. Keep monitoring the others. |
+| **Working** | At least one tracked conversation or its subagents is working. |
+| **Terminate / Retire** | Stop all explicitly tracked Claude conversations. |
+
+## Read the status columns
+
+| Column | Badge | Meaning |
+| --- | --- | --- |
+| **ACC** — access | **GHO** | Direct Ghostty |
+| | **TMX** | Motley-managed tmux |
+| | **EXT** | External session |
+| | **MIX** | Managed and external access |
+| **MOD** — mode | **FG** | Foreground |
+| | **BG** | Background |
+| | **F+B** | Foreground and background |
+| **AG** — agent | Agent name | Grey for every agent |
+
+Access and mode are independent. An external session may run in another tmux
+pane. **Details** shows each conversation's status.
+
+## Select and copy text
+
+Drag over text in **Actions**, or across list rows to select whole rows.
+Selections are highlighted, with **CPY / CLR** hints below the panels.
+
+| Input | Result |
+| --- | --- |
+| **Ctrl+C** with a selection | Copy it. Copied rows include full member titles. |
+| **Esc** | Clear the selection. |
+| **Ctrl+C** without a selection | Close the TUI. |
+| Click and release | Activate an action or link. |
 
 ## Configuration
 
