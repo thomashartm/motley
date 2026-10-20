@@ -2095,4 +2095,5 @@ copying text. Kept the existing behaviour and shortcuts, using tables for quick
 reference. Documentation-only change; reviewed the diff and Markdown links and
 ran `git diff --check`. No runtime tests needed.
 
-Prepared for publication from `docs/readme-readability` against current `main`.
+Published in PR #76 from `docs/readme-readability`:
+https://github.com/thomashartm/motley/pull/76.
