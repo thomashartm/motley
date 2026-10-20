@@ -2086,3 +2086,14 @@ https://github.com/thomashartm/motley/pull/75. Hosted CI is pending.
 Built executable: `bin/mtly` in this worktree. Run it without arguments to open
 the overview against existing Motley state; running agents can keep running.
 The installed binary has not been replaced, and the PR has not been merged.
+
+## README readability — 2026-10-20
+
+Split the lifecycle and session guidance into short sections for removal rules,
+imported sessions, reimporting, linked Claude conversations, status columns and
+copying text. Kept the existing behaviour and shortcuts, using tables for quick
+reference. Documentation-only change; reviewed the diff and Markdown links and
+ran `git diff --check`. No runtime tests needed.
+
+Published in PR #76 from `docs/readme-readability`:
+https://github.com/thomashartm/motley/pull/76.
