@@ -1,10 +1,10 @@
-# motley - the opinionated agent crew manager
+# motley — All your local agent crews in one window
 
 <p align="center">
   <img src="motley-logo.png" alt="Motley logo" width="240">
 </p>
 
-**Motley brings your all your local coding agents into a single view.**
+**Start, monitor and manage your local coding agents from one place.**
 * See what each session is working on
 * see what’s running and know where your attention is
 needed
