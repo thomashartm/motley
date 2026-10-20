@@ -2097,3 +2097,8 @@ ran `git diff --check`. No runtime tests needed.
 
 Published in PR #76 from `docs/readme-readability`:
 https://github.com/thomashartm/motley/pull/76.
+
+## README tagline — 2026-10-20
+
+Changed the title to “motley — All your local agent crews in one window” and
+shortened the opening description. Documentation only; `git diff --check` passed.
