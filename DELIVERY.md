@@ -2080,4 +2080,9 @@ uninstaller, plugin and Go suites (CLI integration package: 184.102 seconds).
 The terminal spawn test now asserts the labelled review fields; narrow-input
 coverage verifies that long values keep the cursor visible.
 
-Built executable: `bin/mtly` in this worktree. Not installed, published or merged.
+Published implementation `83d48ed` in PR #75:
+https://github.com/thomashartm/motley/pull/75. Hosted CI is pending.
+
+Built executable: `bin/mtly` in this worktree. Run it without arguments to open
+the overview against existing Motley state; running agents can keep running.
+The installed binary has not been replaced, and the PR has not been merged.
