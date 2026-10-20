@@ -212,7 +212,7 @@ func archive(dir string, m Manifest) error {
 	now := time.Now().UTC()
 	m.RetiredAt = &now
 	prefix := filepath.Join(dir, "archive", m.ID)
-	suffixes := []string{".events.jsonl", ".prompt.md", ".claude.json", ".direct.json"}
+	suffixes := []string{".events.jsonl", ".prompt.md", ".claude.json", ".direct.json", ".ghostty-terminal"}
 	for _, id := range append([]string{m.ClaudeSession}, m.ClaudeSessions...) {
 		if id != "" {
 			suffixes = append(suffixes, "."+id+".claude.json")
@@ -351,7 +351,7 @@ func Revive(id string) error {
 		}
 		// A failed window open has not consumed the reviewed first prompt. Once
 		// the foreground runner has started, revive follows the normal resume path.
-		return terminal.OpenGhostty(m.ID, m.Worktree, status.Seen != 0)
+		return openGhostty(dir, m, "", status.Seen != 0)
 	}
 	sessions, err := tmux.Sessions()
 	if err != nil {

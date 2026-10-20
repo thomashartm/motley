@@ -259,9 +259,8 @@ func stopExternal(m Manifest) error {
 	return fmt.Errorf("the Claude is still stopping; member retained, retry after it exits")
 }
 
-// ExternalTerminal explains where an imported session runs. Motley controls
-// terminals only through tmux, so it never focuses or drives the original one,
-// and it never starts a second Claude writer against an open conversation.
+// ExternalTerminal focuses a recorded direct Ghostty terminal, or explains
+// where an imported session runs without starting another conversation.
 func ExternalTerminal(id string) error {
 	dir, err := state.MembersDir()
 	if err != nil {
@@ -272,7 +271,7 @@ func ExternalTerminal(id string) error {
 		return err
 	}
 	if m.LaunchTarget == "ghostty" {
-		return directTerminal(m)
+		return focusGhostty(dir, m)
 	}
 	s, err := externalSession(m)
 	if err != nil {

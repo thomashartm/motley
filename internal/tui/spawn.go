@@ -14,13 +14,13 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/thomashartm/motley/internal/agents"
 	"github.com/thomashartm/motley/internal/blueprint"
 	"github.com/thomashartm/motley/internal/config"
 	"github.com/thomashartm/motley/internal/crew"
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/member"
+	"github.com/thomashartm/motley/internal/terminal"
 	"github.com/thomashartm/motley/internal/worktree"
 )
 
@@ -36,6 +36,7 @@ const (
 	launchStep
 	crewStep
 	destinationStep
+	windowStep
 )
 
 type spawnForm struct {
@@ -44,6 +45,7 @@ type spawnForm struct {
 	repos               []string
 	sources             []worktree.SourceBranch
 	blueprints          []blueprint.Blueprint
+	windows             []terminal.GhosttyWindow
 	query               textinput.Model
 	fields              []textinput.Model
 	opts                member.SpawnOptions
@@ -71,6 +73,11 @@ type spawnSourcesLoaded struct {
 	sources []worktree.SourceBranch
 	err     error
 }
+type spawnWindowsLoaded struct {
+	windows []terminal.GhosttyWindow
+	err     error
+}
+type spawnWindowPreviewed struct{ err error }
 type spawnProgress string
 type issueLooked struct {
 	issue *member.IssueContext
@@ -85,14 +92,14 @@ func spawnPreviewActions() []string { return []string{"Launch", "Edit prompt", "
 
 func spawnDestinations() []string {
 	if runtime.GOOS == "darwin" {
-		return []string{"New Ghostty window", "tmux session"}
+		return []string{"New Ghostty tab", "tmux session"}
 	}
 	return []string{"tmux session"}
 }
 
 func spawnDestination(target string) string {
 	if target == "ghostty" {
-		return "New Ghostty window (direct agent)"
+		return "New Ghostty tab (direct agent)"
 	}
 	return "tmux session"
 }
@@ -203,6 +210,20 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	f := m.spawn
 	switch msg := msg.(type) {
+	case spawnWindowsLoaded:
+		m.busy, m.busyText = false, ""
+		f.windows, f.step, f.choice = msg.windows, windowStep, 0
+		f.err = ""
+		if msg.err != nil {
+			f.err = msg.err.Error()
+		}
+	case spawnWindowPreviewed:
+		m.busy, m.busyText = false, ""
+		if msg.err != nil {
+			f.err = msg.err.Error()
+		} else {
+			f.err = ""
+		}
 	case spawnSourcesLoaded:
 		m.busy, m.busyText = false, ""
 		if msg.err != nil {
@@ -242,7 +263,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f.plan = msg.plan
 		f.step = previewStep
 		f.preview = viewport.New(m.detailWidth(), m.previewHeight(m.contentHeight()))
-		f.preview.SetContent(ansi.Hardwrap(multiline(msg.plan.Prompt), m.detailWidth(), true))
+		f.preview.SetContent(m.spawnPreviewContent())
 		f.err = ""
 	case promptEdited:
 		if msg.err != nil {
@@ -250,7 +271,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			f.plan.Prompt = msg.prompt
 			f.plan.HasPrompt = true
-			f.preview.SetContent(ansi.Hardwrap(multiline(msg.prompt), m.detailWidth(), true))
+			f.preview.SetContent(m.spawnPreviewContent())
 			f.err = ""
 		}
 	case issueLooked:
@@ -280,7 +301,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.step = previewStep
 			return m, nil
 		}
-		newWindow := msg.manifest.LaunchTarget == "ghostty"
+		directGhostty := msg.manifest.LaunchTarget == "ghostty"
 		m.spawn = nil
 		m.query.SetValue("")
 		m.group = "attention"
@@ -293,7 +314,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 				rows = append(rows, r)
 			}
 		}
-		m.allRows = append(rows, member.Row{Manifest: msg.manifest, Alive: msg.err == nil, External: newWindow, Status: "starting", Since: msg.manifest.CreatedAt.Unix()})
+		m.allRows = append(rows, member.Row{Manifest: msg.manifest, Alive: msg.err == nil, External: directGhostty, Status: "starting", Since: msg.manifest.CreatedAt.Unix()})
 		m.applyFilter()
 		for i, r := range m.rows {
 			if r.ID == msg.manifest.ID {
@@ -304,8 +325,8 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.message = "Created " + msg.manifest.ID
 		if msg.err != nil {
 			m.message += "; " + msg.err.Error()
-		} else if newWindow {
-			m.message += " in a new Ghostty window"
+		} else if directGhostty {
+			m.message += " in a new Ghostty tab"
 		}
 		return m, m.requestDetail(true)
 	}
@@ -354,6 +375,19 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if k == "esc" {
 			m.spawn = nil
 			return m, nil
+		}
+		if f.step == windowStep {
+			switch k {
+			case "r":
+				return m.loadGhosttyWindows()
+			case "p":
+				if f.choice < len(f.windows) {
+					id := f.windows[f.choice].ID
+					m.busy, m.busyText = true, "Previewing window; return to Motley to continue…"
+					return m, func() tea.Msg { return spawnWindowPreviewed{terminal.PreviewGhosttyWindow(id)} }
+				}
+				return m, nil
+			}
 		}
 		if f.step == previewStep {
 			actionCount := len(spawnPreviewActions())
@@ -435,9 +469,11 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		if f.step == agentStep || f.step == blueprintStep || f.step == modeStep || f.step == crewStep || f.step == destinationStep {
+		if f.step == agentStep || f.step == blueprintStep || f.step == modeStep || f.step == crewStep || f.step == destinationStep || f.step == windowStep {
 			size := 3
 			switch f.step {
+			case windowStep:
+				size = len(f.windows) + 1
 			case destinationStep:
 				size = len(spawnDestinations())
 			case crewStep:
@@ -453,6 +489,14 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "k", "up":
 				f.choice = max(0, f.choice-1)
 			case "enter":
+				if f.step == windowStep {
+					f.opts.GhosttyWindow = "new"
+					if f.choice < len(f.windows) {
+						f.opts.GhosttyWindow = f.windows[f.choice].ID
+					}
+					f.err = ""
+					return m.loadSpawnRepos()
+				}
 				if f.step == crewStep {
 					s := f.issue.Suggestion
 					switch {
@@ -474,6 +518,7 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 					f.opts.LaunchTarget = "tmux"
 					if runtime.GOOS == "darwin" && f.choice == 0 {
 						f.opts.LaunchTarget = "ghostty"
+						return m.loadGhosttyWindows()
 					}
 					return m.loadSpawnRepos()
 				}
@@ -584,6 +629,15 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
+
+func (m Model) loadGhosttyWindows() (tea.Model, tea.Cmd) {
+	m.spawn.step = windowStep
+	m.busy, m.busyText = true, "Finding Ghostty windows…"
+	return m, func() tea.Msg {
+		windows, err := terminal.GhosttyWindows()
+		return spawnWindowsLoaded{windows, err}
+	}
+}
 func (m Model) editPrompt() tea.Cmd {
 	f := m.spawn
 	file, err := os.CreateTemp("", "motley-prompt-*.md")
@@ -642,136 +696,4 @@ func (m Model) previewContext() string {
 		parts = append(parts, "crew "+c.Title)
 	}
 	return strings.Join(parts, " · ")
-}
-
-// previewHeight leaves room for the title, summary, context and action lines.
-func (m Model) previewHeight(height int) int {
-	chrome := 5
-	if m.previewSource() != "" {
-		chrome++
-	}
-	if m.previewContext() != "" {
-		chrome++
-	}
-	return max(1, height-chrome)
-}
-
-func (m Model) spawnView(height int) string {
-	f := m.spawn
-	width := m.detailWidth()
-	titles := []string{"Repository — type to filter", "Source branch — type to filter", "Ticket and name", "Agent", "Blueprint", "Authorization level", "Variables", "Prompt preview", "Launching", "Crew", "Launch destination"}
-	lines := []string{"Spawn · " + titles[f.step]}
-	switch f.step {
-	case repoStep:
-		input := f.query
-		input.Width = max(1, width-2)
-		lines = append(lines, input.View())
-		lines = append(lines, f.repositoryView(width, max(1, height-3))...)
-	case sourceStep:
-		input := f.query
-		input.Width = max(1, width-2)
-		lines = append(lines, input.View())
-		lines = append(lines, f.sourceView(width, max(1, height-2))...)
-	case identityStep, varsStep:
-		labels := []string{"Ticket or GitHub issue URL (optional)", "Name", "Branch type (←/→)", "Branch"}
-		if f.step == varsStep {
-			labels = f.vars
-		}
-		start := max(0, f.field-(max(1, (height-2)/2)-1))
-		for i := start; i < len(f.fields) && len(lines)+2 <= height-1; i++ {
-			v := f.fields[i]
-			v.Width = max(1, width-2)
-			prefix := ""
-			if i == f.field {
-				prefix = "> "
-			}
-			value := v.View()
-			if f.step == identityStep && i == 2 {
-				value = "[feature]  fix"
-				if v.Value() == "fix" {
-					value = "feature  [fix]"
-				}
-			}
-			lines = append(lines, prefix+clean(labels[i]), value)
-		}
-	case agentStep, blueprintStep, modeStep, crewStep, destinationStep:
-		labels := []string{"claude", "codex", "opencode"}
-		switch f.step {
-		case destinationStep:
-			labels = spawnDestinations()
-		case crewStep:
-			s := f.issue.Suggestion
-			first := fmt.Sprintf("Create crew %q and assign", s.Title)
-			if c, ok := crew.Find(m.crews, s.CrewID); ok {
-				first = "Assign crew " + c.Title
-			}
-			labels = []string{first, "No crew"}
-			lines = append(lines, clean(fmt.Sprintf("Suggested by the %s of #%d", s.Source, f.issue.Number)))
-		case blueprintStep:
-			labels = []string{"none"}
-			for _, b := range f.blueprints {
-				labels = append(labels, b.Name+" — "+b.Description)
-			}
-		case modeStep:
-			labels = []string{"default from " + f.opts.Agent + " settings"}
-			if args := f.blueprintArgs(); len(args) > 0 {
-				labels[0] = "Use blueprint / agent settings"
-				for _, mode := range agents.Modes(f.opts.Agent) {
-					if agents.ConflictingArg(args, mode.Args) != "" {
-						labels[0] = "Use blueprint permissions: " + strings.Join(args, " ")
-						break
-					}
-				}
-			}
-			for _, mode := range agents.Modes(f.opts.Agent) {
-				labels = append(labels, mode.Name+" — "+mode.Summary)
-			}
-		}
-		bottom := height - 1
-		if f.err != "" {
-			bottom--
-		}
-		start := max(0, f.choice-max(1, bottom-2)+1)
-		for i := start; i < len(labels) && len(lines) < bottom; i++ {
-			prefix := "  "
-			if i == f.choice {
-				prefix = "> "
-			}
-			lines = append(lines, prefix+clean(labels[i]))
-		}
-	case previewStep:
-		summary := f.plan.Manifest.Repo + " @ " + f.plan.Manifest.Branch + " · " + f.plan.Manifest.Agent
-		if f.plan.Manifest.Mode != "" {
-			summary += " · " + f.plan.Manifest.Mode
-		} else {
-			summary += " · blueprint / agent permissions"
-		}
-		lines = append(lines, clean(summary))
-		lines = append(lines, "Destination: "+spawnDestination(f.plan.Manifest.LaunchTarget))
-		if source := m.previewSource(); source != "" && len(lines) < height-1 {
-			lines = append(lines, clean(source))
-		}
-		if context := m.previewContext(); context != "" && len(lines) < height-1 {
-			lines = append(lines, clean(context))
-		}
-		lines = append(lines, "> "+spawnPreviewActions()[f.previewAction]+"  ←/→")
-		v := f.preview
-		v.Width = width
-		v.Height = m.previewHeight(height)
-		lines = append(lines, strings.Split(v.View(), "\n")...)
-	case launchStep:
-		log := strings.Split(multiline(f.progress), "\n")
-		start := max(0, len(log)-(height-2))
-		lines = append(lines, log[start:]...)
-	}
-	if f.warning != "" {
-		lines = append(lines, strings.Split(ansi.Wrap(clean(f.warning), width, ""), "\n")...)
-	}
-	if f.err != "" {
-		lines = append(lines, clean(f.err))
-	}
-	for i := range lines {
-		lines[i] = fit(lines[i], width)
-	}
-	return strings.Join(lines[:min(len(lines), height)], "\n")
 }

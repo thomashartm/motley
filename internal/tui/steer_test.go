@@ -194,7 +194,7 @@ func TestSpawnFormPermissionMode(t *testing.T) {
 		t.Fatalf("sandbox selection: %+v", m.spawn.opts)
 	}
 	m = update(m, spawnPrepared{plan: member.Prepared{Manifest: member.Manifest{Repo: "api", Branch: "feat/fx", Agent: "claude", Mode: "sandbox"}}})
-	if !strings.Contains(m.View(), "feat/fx · claude · sandbox") {
+	if !strings.Contains(m.View(), "Permissions: sandbox") {
 		t.Fatal("preview hides the mode")
 	}
 	// The first entry keeps Claude's own default and passes no mode.

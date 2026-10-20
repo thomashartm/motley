@@ -29,7 +29,7 @@ func (m Model) actions() []navigationAction {
 		if m.selectedRow().CodexSession != "" {
 			openHelp = "Opens a terminal client to the same Codex server and conversation. The existing session continues running."
 		} else if m.selectedRow().LaunchTarget == "ghostty" {
-			openHelp = "This agent runs directly in its own Ghostty window. Switch there to interact with it. After it stops, Revive opens a new Ghostty window in the same worktree."
+			openHelp = "Focuses this agent’s recorded Ghostty tab. Its title follows the member name and colour. After it stops, Revive opens a new tab in the same worktree."
 		} else if m.selectedRow().External {
 			openHelp = "Shows where the agent is running in its original terminal. Switch there yourself. To move it into Motley, stop it there and use Revive. Terminate stops it and archives its entry."
 		}
@@ -60,7 +60,7 @@ func (m Model) actions() []navigationAction {
 	}
 	if m.selectedID() == "" {
 		add("Main actions", "Manage crews (m)", "m", "Opens crew management to add, edit, recolour or delete crews and organise their members.", false)
-		add("Main actions", "Spawn agent (s)", "s", "Choose an agent type, then a new Ghostty window (direct, without tmux) or a tmux session. Select a repository and source branch, set up a new worktree, and review the prompt before launching. Ghostty requires macOS.", false)
+		add("Main actions", "Spawn agent (s)", "s", "Choose an agent type, then a new Ghostty tab (direct, without tmux) or a tmux session. Select a repository and source branch, set up a new worktree, and review the prompt before launching. Ghostty requires macOS.", false)
 		add("Main actions", "Prompt templates (f)", "f", "Lists global blueprints. View raw templates, edit them in vi or your default editor, or fill arguments and copy a generated prompt into an external agent. Spawning also offers compatible templates.", false)
 		add("Main actions", "Add existing agent (a)", "a", "Choose Claude or Codex, then select an existing session to add. Import preserves its conversation and files without restarting it.", false)
 		add("Main actions", "Open agent (o)", "o", "Choose a running agent to open. The picker includes all members, even when the main list is filtered.", false)
@@ -71,7 +71,7 @@ func (m Model) actions() []navigationAction {
 	if m.selectedID() != "" {
 		reviveHelp := "Immediately restarts a stopped member in its existing worktree, resuming its saved agent session when available. Does not restore retired members or deleted worktrees."
 		if m.selectedRow().LaunchTarget == "ghostty" {
-			reviveHelp = "Restarts the stopped agent directly in a new Ghostty window in its existing worktree, resuming its saved session when available."
+			reviveHelp = "Restarts the stopped agent directly in a new Ghostty tab in its existing worktree, resuming its saved session when available."
 		}
 		if m.selectedRow().CodexSession != "" {
 			reviveHelp = "Reopens the saved Codex conversation through its original shared server. Does not create a new conversation or worktree."

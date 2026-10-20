@@ -24,7 +24,7 @@ func spawnCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "spawn --repo <name> --branch <new-branch>",
 		Short: "Create a worktree and start a coding agent in Ghostty or tmux",
-		Long:  "Create a new branch from origin/main (or origin/master), push it, copy local\nartifacts and start an agent. --terminal ghostty opens a new Ghostty window\nwith the agent running directly; --terminal tmux (default) creates a tmux session.\nFor tmux, switch inside tmux or attach outside; --detach leaves it in the background.\nA numeric --ticket looks up the GitHub issue with gh (title, body, URL) for\nblueprints and suggests a crew from its parent issue or milestone.",
+		Long:  "Create a new branch from origin/main (or origin/master), push it, copy local\nartifacts and start an agent. --terminal ghostty opens a new Ghostty tab\nwith the agent running directly; --terminal tmux (default) creates a tmux session.\nFor tmux, switch inside tmux or attach outside; --detach leaves it in the background.\nA numeric --ticket looks up the GitHub issue with gh (title, body, URL) for\nblueprints and suggests a crew from its parent issue or milestone.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := config.Load()
@@ -41,7 +41,7 @@ func spawnCommand() *cobra.Command {
 			}
 			destination := "Attach: motley attach " + m.ID
 			if m.LaunchTarget == "ghostty" {
-				destination = "Terminal: new Ghostty window"
+				destination = "Terminal: new Ghostty tab"
 			}
 			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Created %s\nWorktree: %s\n%s\n", m.ID, m.Worktree, destination); err != nil {
 				return err
@@ -65,6 +65,7 @@ func spawnCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.Crew, "crew", "", "Crew id")
 	cmd.Flags().StringVar(&opts.Color, "color", "", "Colour override (otherwise inherit crew colour)")
 	cmd.Flags().StringVar(&opts.LaunchTarget, "terminal", "tmux", "Launch destination: ghostty or tmux")
+	cmd.Flags().StringVar(&opts.GhosttyWindow, "ghostty-window", "", "Ghostty window ID, or new (default: front window)")
 	cmd.Flags().StringVar(&opts.Agent, "agent", "", "Agent: claude, codex or opencode (default: blueprint agent, then claude)")
 	cmd.Flags().StringVar(&opts.Mode, "mode", "", "Authorization level for the selected agent (default: agent/blueprint settings); claude: "+agents.ModeNames("claude")+"; codex: "+agents.ModeNames("codex")+"; opencode: "+agents.ModeNames("opencode"))
 	cmd.Flags().StringVar(&opts.Blueprint, "blueprint", "", "Blueprint name")

@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -33,6 +34,9 @@ func TestSpawnPickerUsesAllEntrypoints(t *testing.T) {
 	}
 	first, _ := (Model{}).beginSpawn()
 	m := arrow(first.(Model), tea.KeyEnter)
+	if runtime.GOOS == "darwin" {
+		m = arrow(m, tea.KeyDown)
+	}
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	msg := cmd().(spawnLoaded)
 	if msg.err != nil || !reflect.DeepEqual(msg.repos, []string{filepath.Join(home, "projects/motley"), filepath.Join(home, "projects/aderis/backend")}) {

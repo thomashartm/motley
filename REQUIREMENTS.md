@@ -34,7 +34,7 @@ motley is a terminal tool for running and governing parallel AI coding sessions.
 | Term | Meaning |
 | --- | --- |
 | motley / mtly | The tool and its short command |
-| member | One git worktree and coding agent, in a tmux session or a direct Ghostty window |
+| member | One git worktree and coding agent, in a tmux session or a direct Ghostty tab |
 | crew | A group of members; a text title and optional link |
 | gig | A package of work, described by the crew's optional gig field |
 
@@ -43,7 +43,7 @@ a static Go executable per supported OS/architecture, without cgo, available
 as both `motley` and `mtly`.
 
 The main-menu **Spawn agent** flow asks for agent type, then destination:
-**New Ghostty window** on macOS (direct agent, no tmux) or **tmux session**.
+**New Ghostty tab** on macOS (direct agent, no tmux) or **tmux session**.
 Both create a new worktree after repository, source and authorization selection.
 
 ## 0. Principles and non-goals
@@ -55,10 +55,14 @@ Both create a new worktree after repository, source and authorization selection.
 - No automatic GitHub synchronization. `gh` runs only on explicit user action,
   plus an optional lookup at spawn.
 - Repository operations go through git; GitHub operations through gh. The
-  **New Ghostty window** destination (including Revive of that destination) is
-  the sole AppleScript exception (approved 2026-10-19): it may create and activate
-  a new window running the selected agent directly in its worktree. Do not search,
-  focus or send input to existing terminal windows, including imported agents.
+  **New Ghostty tab** destination (including Revive) is the sole AppleScript
+  integration (approved 2026-10-19): list Ghostty windows and preview a selected
+  window by bringing it forward.
+  Create a tab in the selected window (default: current), or a new window,
+  running the agent directly in its worktree.
+  Record its terminal ID to focus that exact terminal and update its tab title
+  to the member name prefixed by the agent/crew colour marker. Do not match
+  terminals by title or directory, send input, or control imported agent processes.
 - Hooks must never slow down or break an agent. `motley report` returns fast and
   always exits 0.
 - motley gradually replaces `wt` 1.2.0 and `wt-clean` 1.0.0. The unchanged scripts
@@ -366,8 +370,12 @@ the destination with ordinary Launch, Edit prompt and Cancel controls.
    `--detach` leaves the session detached; explicit mode flags select behavior.
 
 For `--terminal ghostty`, start the foreground runner directly in a new Ghostty
-window at the new worktree. Preserve agent arguments, prompt, permission choices
-and reporting environment; clear TMUX/TMUX_PANE. Never create or attach a tmux
+tab at the new worktree. The dialog selects an existing window (current first),
+with title, tab count, a `p` preview action and a New window choice. CLI launches
+use the front window by default; `--ghostty-window new` opens a separate window,
+and an explicit window ID selects that exact window. A missing selected window
+is an error, never a silent fallback. Preserve agent arguments, prompt,
+permission choices and reporting environment; clear TMUX/TMUX_PANE. Never create or attach a tmux
 session. Window launch failures retain the manifest and worktree for Revive.
 A live direct agent must be stopped in its original window before retirement or
 termination; Revive reuses its worktree and original destination.
