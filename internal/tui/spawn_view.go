@@ -34,12 +34,19 @@ func (m Model) spawnChoiceLabels() []string {
 		}
 		return append(labels, "New window")
 	case crewStep:
-		s := f.issue.Suggestion
-		first := fmt.Sprintf("Create crew %q and assign", s.Title)
-		if c, ok := crew.Find(m.crews, s.CrewID); ok {
-			first = "Assign crew " + c.Title
+		var labels []string
+		if s := f.suggestion(); s != nil {
+			first := fmt.Sprintf("Create crew %q and assign", s.Title)
+			if c, ok := crew.Find(m.crews, s.CrewID); ok {
+				first = "Assign crew " + c.Title
+			}
+			labels = append(labels, first)
 		}
-		return []string{first, "No crew"}
+		labels = append(labels, "No crew")
+		for _, c := range m.spawnCrews() {
+			labels = append(labels, "Assign crew "+c.Title)
+		}
+		return labels
 	case blueprintStep:
 		labels := []string{"No blueprint"}
 		for _, b := range f.blueprints {
@@ -255,8 +262,7 @@ func (m Model) spawnView(height int) string {
 			}
 			lines = append(lines, line)
 		}
-		if f.step == crewStep && len(lines)+1 < available {
-			s := f.issue.Suggestion
+		if s := f.suggestion(); f.step == crewStep && s != nil && len(lines)+1 < available {
 			lines = append(lines, "", clean(fmt.Sprintf("Suggested by the %s of #%d", s.Source, f.issue.Number)))
 		}
 	case previewStep:

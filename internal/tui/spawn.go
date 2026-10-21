@@ -283,11 +283,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.warning = "Issue lookup skipped: " + gh.Hint(msg.err)
 		}
 		f.choice = 0
-		if msg.issue != nil && msg.issue.Suggestion != nil && f.opts.Crew == "" {
-			f.step = crewStep
-			return m, nil
-		}
-		return m.loadSpawnBlueprints()
+		return m.spawnCrewOrBlueprints()
 	case spawnProgress:
 		f.progress += string(msg)
 		if len(f.progress) > 8192 {
@@ -332,6 +328,34 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
+func (f *spawnForm) suggestion() *member.CrewSuggestion {
+	if f.issue == nil {
+		return nil
+	}
+	return f.issue.Suggestion
+}
+
+// spawnCrews lists existing crews to offer, minus one the suggestion already names.
+func (m Model) spawnCrews() []crew.Crew {
+	var crews []crew.Crew
+	for _, c := range m.crews {
+		if s := m.spawn.suggestion(); s == nil || s.CrewID != c.ID {
+			crews = append(crews, c)
+		}
+	}
+	return crews
+}
+
+// spawnCrewOrBlueprints asks for a crew when one is suggested or any exists.
+func (m Model) spawnCrewOrBlueprints() (tea.Model, tea.Cmd) {
+	f := m.spawn
+	if f.opts.Crew == "" && (f.suggestion() != nil || len(m.crews) > 0) {
+		f.step, f.choice = crewStep, 0
+		return m, nil
+	}
+	return m.loadSpawnBlueprints()
+}
+
 func (m Model) loadSpawnBlueprints() (tea.Model, tea.Cmd) {
 	f := m.spawn
 	f.choice = 0
@@ -477,7 +501,7 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case destinationStep:
 				size = len(spawnDestinations())
 			case crewStep:
-				size = 2
+				size = len(m.spawnChoiceLabels())
 			case blueprintStep:
 				size = len(f.blueprints) + 1
 			case modeStep:
@@ -498,14 +522,22 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m.loadSpawnRepos()
 				}
 				if f.step == crewStep {
-					s := f.issue.Suggestion
-					switch {
-					case f.choice == 1:
+					choice := f.choice
+					if s := f.suggestion(); s != nil {
+						if choice == 0 {
+							if s.CrewID != "" {
+								f.opts.Crew = s.CrewID
+							} else {
+								f.opts.CreateCrew = true
+							}
+							return m.loadSpawnBlueprints()
+						}
+						choice--
+					}
+					if choice == 0 {
 						f.opts.SkipSuggestion = true
-					case s.CrewID != "":
-						f.opts.Crew = s.CrewID
-					default:
-						f.opts.CreateCrew = true
+					} else {
+						f.opts.Crew = m.spawnCrews()[choice-1].ID
 					}
 					return m.loadSpawnBlueprints()
 				}
@@ -581,7 +613,7 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.opts.Ticket, f.opts.Name, f.opts.Branch = ticket, name, branch
 			f.choice, f.err = 0, ""
 			if _, ok := member.IssueNumber(ticket); !ok || m.github == nil {
-				return m.loadSpawnBlueprints()
+				return m.spawnCrewOrBlueprints()
 			}
 			cfg, client, repo := m.spawnCfg, m.github, f.opts.Repo
 			m.busy = true
