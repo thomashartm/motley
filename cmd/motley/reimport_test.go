@@ -220,6 +220,8 @@ func TestReimportClaudePickerTerminal(t *testing.T) {
 				// Actual 120x30 terminal: Member heading, Open, then Reimport.
 				terminal.send(t, "\x1b[<0;66;8M\x1b[<0;66;8m")
 			case "shortcut":
+				// "S" acts on the selected member, which exists only once the list has loaded.
+				eventually(t, func() bool { return strings.Contains(terminal.text(), "Keep my name") })
 				before := len(terminal.text())
 				terminal.send(t, "2")
 				eventually(t, func() bool { return len(terminal.text()) > before })

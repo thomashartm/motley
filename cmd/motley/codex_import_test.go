@@ -252,6 +252,8 @@ func TestImportCodexPickerTerminal(t *testing.T) {
 	if err != nil || len(rows) != 1 || rows[0].CodexSession != c.thread.ID || !rows[0].External {
 		t.Fatal(fmt.Sprint(rows), err)
 	}
+	// The list reloads after the message; "o" without a selected row opens the picker.
+	eventually(t, func() bool { return strings.Contains(terminal.text(), "External terminal or application") })
 	terminal.send(t, "o")
 	eventually(t, func() bool { return f.clientSession(f.clientName(terminal)) == "codex-"+c.thread.ID })
 	eventually(t, func() bool {
