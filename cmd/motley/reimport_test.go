@@ -222,9 +222,10 @@ func TestReimportClaudePickerTerminal(t *testing.T) {
 			case "shortcut":
 				// "S" acts on the selected member, which exists only once the list has loaded.
 				eventually(t, func() bool { return strings.Contains(terminal.text(), "Keep my name") })
+				// Wait for the Details footer: keys read together arrive as one "2S" key.
 				before := len(terminal.text())
 				terminal.send(t, "2")
-				eventually(t, func() bool { return len(terminal.text()) > before })
+				eventually(t, func() bool { return strings.Contains(terminal.text()[before:], "← back · → actions") })
 				terminal.send(t, "S")
 			}
 			eventually(t, func() bool { return strings.Contains(terminal.text(), "Reimport: Moved Claude") })
