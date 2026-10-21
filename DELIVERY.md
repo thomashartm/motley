@@ -2110,3 +2110,6 @@ crew and "No crew". The step also appears without a suggestion or ticket when
 crews exist; "No crew" is then the default. A suggested crew that already exists
 is not listed twice. Added `TestSpawnCrewStepOffersExistingCrews`; `go test ./...`,
 `go vet ./internal/tui` and `gofmt -l internal` pass.
+
+Published in PR #78 from `fix/spawn-existing-crew`:
+https://github.com/thomashartm/motley/pull/78.
