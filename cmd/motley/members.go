@@ -220,7 +220,7 @@ func execAgentCommand() *cobra.Command {
 				}
 			}
 			prompt := ""
-			if !resume && (m.Prompt || m.Blueprint != "") {
+			if m.SendsPrompt(resume) {
 				prompt, err = blueprint.ReadPrompt(filepath.Join(dir, m.ID+".prompt.md"))
 				if err != nil {
 					return err

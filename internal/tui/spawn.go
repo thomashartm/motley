@@ -310,7 +310,7 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 				rows = append(rows, r)
 			}
 		}
-		m.allRows = append(rows, member.Row{Manifest: msg.manifest, Alive: msg.err == nil, External: directGhostty, Status: "starting", Since: msg.manifest.CreatedAt.Unix()})
+		m.allRows = append(rows, member.Row{Manifest: msg.manifest, Alive: msg.err == nil, External: directGhostty, Status: msg.manifest.LaunchStatus(false), Since: msg.manifest.CreatedAt.Unix()})
 		m.applyFilter()
 		for i, r := range m.rows {
 			if r.ID == msg.manifest.ID {

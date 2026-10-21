@@ -281,7 +281,7 @@ func SpawnPrepared(p Prepared, progress io.Writer) (Manifest, error) {
 		}
 		return m, nil
 	}
-	if err := tmux.Start(id, m.Worktree, m.Ticket, m.Agent); err != nil {
+	if err := tmux.Start(id, m.Worktree, m.Ticket, m.Agent, m.LaunchStatus(false)); err != nil {
 		return m, fmt.Errorf("worktree and manifest retained for %s; tmux startup failed: %w", id, err)
 	}
 	return m, applyAppearance(m, crews)

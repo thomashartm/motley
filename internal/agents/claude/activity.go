@@ -104,13 +104,17 @@ func (a *Activity) Apply(e state.Event) state.Event {
 	return current
 }
 
-// Status merges a live discovery result with hook evidence. A busy or waiting
-// discovery result wins; idle may describe a parent with active children.
+// Status merges a live discovery result with hook evidence. A waiting discovery
+// result wins; idle may describe a parent with active children. Busy also covers
+// background shells, so a finished turn without running subagents is waiting.
 func (a Activity) Status(sessionID, live string, startedAt int64) (string, int64) {
 	if a.SessionID != sessionID || a.Current.TS.IsZero() || a.Current.TS.Before(time.UnixMilli(startedAt)) {
 		return live, 0
 	}
 	if live == "idle" && (len(a.Children) > 0 || a.Current.Status == "ready" || a.Current.Status == "question" || a.Current.Status == "permission") {
+		return a.Current.Status, a.Since
+	}
+	if live == "working" && len(a.Children) == 0 && (a.Current.Status == "ready" || a.Current.Status == "idle") {
 		return a.Current.Status, a.Since
 	}
 	if live == a.Current.Status {

@@ -50,7 +50,8 @@ func TestTmuxMouseTicketLinksAndPrefix(t *testing.T) {
 		}
 	}()
 	view := func() string { return f.tmux("capture-pane", "-p", "-t", "=fixture:") }
-	eventually(t, func() bool { return strings.Contains(view(), "#42") })
+	// The fixture agent exits at once; measure after its row settles in ENDED.
+	eventually(t, func() bool { return strings.Contains(view(), "#42") && strings.Contains(view(), "ENDED / DEAD") })
 	x, y := -1, -1
 	for row, line := range strings.Split(view(), "\n") {
 		if at := strings.Index(line, "#42"); at >= 0 {

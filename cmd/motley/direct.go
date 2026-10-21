@@ -44,7 +44,7 @@ func runDirectCommand() *cobra.Command {
 				return err
 			}
 			now := time.Now().Unix()
-			if err := terminal.WriteStatus(dir, m.ID, terminal.Status{Agent: m.Agent, Status: "starting", Since: now, Seen: now}); err != nil {
+			if err := terminal.WriteStatus(dir, m.ID, terminal.Status{Agent: m.Agent, Status: m.LaunchStatus(resume), Since: now, Seen: now}); err != nil {
 				return err
 			}
 			bin, err := os.Executable()

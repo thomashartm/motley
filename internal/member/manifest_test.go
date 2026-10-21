@@ -64,3 +64,21 @@ func TestImportedCodexManifestValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestLaunchStatus(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		m      Manifest
+		resume bool
+		want   string
+	}{
+		{"bare spawn waits for input", Manifest{}, false, "idle"},
+		{"prompted spawn starts", Manifest{Prompt: true}, false, "starting"},
+		{"blueprint spawn starts", Manifest{Blueprint: "plan"}, false, "starting"},
+		{"revive skips the prompt", Manifest{Prompt: true}, true, "idle"},
+	} {
+		if got := tt.m.LaunchStatus(tt.resume); got != tt.want {
+			t.Errorf("%s: got %q want %q", tt.name, got, tt.want)
+		}
+	}
+}

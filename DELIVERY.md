@@ -2119,3 +2119,20 @@ had already failed PRs #73, #75 and #77; on those PRs it also showed in
 `TestReimportClaudePickerTerminal`. Both tests pressed a key that acts on the
 selected member before the TUI had loaded that member, so on slow runners the key
 did nothing. The tests now wait for the member to show before pressing the key.
+
+## Waiting agents shown as working — 2026-10-21
+
+Two causes put waiting agents under WORKING:
+
+- Codex and OpenCode send no hook before the first prompt, so a spawn without a
+  prompt, and every revive, stayed `starting`. `Manifest.LaunchStatus` now starts
+  them as `idle`; prompted spawns keep `starting`. Used by tmux, direct Ghostty
+  and the TUI's first row.
+- Claude's live discovery reports `busy` while a background shell runs, and it
+  overrode hook evidence. When the latest hook shows a finished turn (`ready` or
+  `idle`) with no running subagent, that hook evidence now wins over `busy`.
+
+`TestTmuxMouseTicketLinksAndPrefix` measured the ticket's row before the
+exiting fixture agent moved to ENDED; it now waits for that move. Added
+`TestLaunchStatus` and `TestBusyBackgroundShellAfterFinishedTurnIsWaiting`;
+`go test ./...` and `go vet ./...` pass.
