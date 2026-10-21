@@ -200,3 +200,37 @@ func TestCrewEditorFetchesMissingTitle(t *testing.T) {
 		t.Fatalf("editor %+v", m.editor)
 	}
 }
+
+func TestSpawnCrewStepOffersExistingCrews(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		ticket string
+		issue  *member.IssueContext
+		moves  int
+	}{
+		{"with suggestion", "412", &member.IssueContext{Number: 412, Suggestion: &member.CrewSuggestion{Title: "Epic", URL: "u", Source: "milestone", CrewID: "fx"}}, 2},
+		{"without suggestion", "412", &member.IssueContext{Number: 412}, 2},
+		{"without ticket", "", nil, 2},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			m := identityForm(t)
+			m.spawn.fields[0].SetValue(tt.ticket)
+			m.crews = []crew.Crew{{ID: "fx", Title: "FX crew"}, {ID: "ops", Title: "Ops crew"}}
+			m, _ = submitIdentity(t, m)
+			if tt.issue != nil {
+				m = update(m, issueLooked{issue: tt.issue})
+			}
+			view := ansi.Strip(m.spawnView(30))
+			if m.spawn.step != crewStep || !strings.Contains(view, "Assign crew Ops crew") || strings.Count(view, "Assign crew FX crew") != 1 {
+				t.Fatalf("%d\n%s", m.spawn.step, view)
+			}
+			for range tt.moves {
+				m = update(m, tea.KeyMsg{Type: tea.KeyDown})
+			}
+			m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
+			if m.busyText != "Loading blueprints…" || m.spawn.opts.Crew != "ops" || m.spawn.opts.CreateCrew {
+				t.Fatalf("%+v", m.spawn.opts)
+			}
+		})
+	}
+}

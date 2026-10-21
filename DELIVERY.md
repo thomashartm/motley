@@ -2102,3 +2102,11 @@ https://github.com/thomashartm/motley/pull/76.
 
 Changed the title to “motley — All your local agent crews in one window” and
 shortened the opening description. Documentation only; `git diff --check` passed.
+
+## Spawn: pick an existing crew — 2026-10-21
+
+The spawn dialog's Crew step now lists every existing crew after the suggested
+crew and "No crew". The step also appears without a suggestion or ticket when
+crews exist; "No crew" is then the default. A suggested crew that already exists
+is not listed twice. Added `TestSpawnCrewStepOffersExistingCrews`; `go test ./...`,
+`go vet ./internal/tui` and `gofmt -l internal` pass.
