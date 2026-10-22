@@ -396,7 +396,7 @@ func Revive(id string) error {
 	if err != nil {
 		return err
 	}
-	if err := tmux.Revive(m.ID, m.Worktree, m.Ticket, m.Agent); err != nil {
+	if err := tmux.Revive(m.ID, m.Worktree, m.Ticket, m.Agent, m.LaunchStatus(true)); err != nil {
 		return err
 	}
 	return applyAppearance(m, crews)

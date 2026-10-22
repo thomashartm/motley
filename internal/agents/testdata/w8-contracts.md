@@ -96,7 +96,8 @@ partial reply as finished; the plugin now marks them `interrupted`.
 Known limitations, no native signal available:
 
 - Codex fires SessionStart and OpenCode session.created only with the first
-  prompt, so a bare spawn or revive shows `starting` until the user types.
+  prompt. Motley therefore starts a spawn without a prompt, and every revive,
+  as `idle`; only a prompted spawn shows `starting` until its first hook.
 - Codex 0.159.3 offers `request_user_input` only in Plan mode
   (`default_mode_request_user_input` is disabled), and its Plan-mode Stop has
   `last_assistant_message: null`, so the summary is empty.

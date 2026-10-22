@@ -73,3 +73,39 @@ func TestStopBackgroundSnapshotRecoversMissedSubagentHooks(t *testing.T) {
 		}
 	}
 }
+
+func TestBusyBackgroundShellAfterFinishedTurnIsWaiting(t *testing.T) {
+	stamp := time.Now().UTC()
+	started := stamp.Add(-time.Minute).UnixMilli()
+	apply := func(a *Activity, payload string) {
+		t.Helper()
+		e, err := Parse([]byte(payload), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		e.TS = stamp
+		a.Apply(e)
+	}
+	var a Activity
+	apply(&a, `{"hook_event_name":"Stop","session_id":"s","background_tasks":[{"id":"e2e","type":"shell","status":"running"}]}`)
+	if status, _ := a.Status("s", "working", started); status != "ready" {
+		t.Fatalf("finished turn with a background shell: %s", status)
+	}
+	apply(&a, `{"hook_event_name":"Notification","session_id":"s","notification_type":"idle_prompt"}`)
+	if status, _ := a.Status("s", "working", started); status != "idle" {
+		t.Fatalf("idle prompt with a background shell: %s", status)
+	}
+	var sub Activity
+	apply(&sub, `{"hook_event_name":"Stop","session_id":"s","background_tasks":[{"id":"review","type":"subagent","status":"running"}]}`)
+	if status, _ := sub.Status("s", "working", started); status != "working" {
+		t.Fatalf("running subagent: %s", status)
+	}
+	var prompted Activity
+	apply(&prompted, `{"hook_event_name":"UserPromptSubmit","session_id":"s","prompt":"go"}`)
+	if status, _ := prompted.Status("s", "working", started); status != "working" {
+		t.Fatalf("new prompt: %s", status)
+	}
+	if status, _ := (Activity{}).Status("s", "working", started); status != "working" {
+		t.Fatalf("no hook evidence: %s", status)
+	}
+}

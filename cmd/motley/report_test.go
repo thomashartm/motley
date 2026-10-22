@@ -59,8 +59,8 @@ func TestClaudeReportingEndToEnd(t *testing.T) {
 			t.Fatalf("events=%d want %d after %s", got, n, payload)
 		}
 	}
-	if status() != "starting" {
-		t.Fatal("spawn must start in starting state")
+	if status() != "idle" {
+		t.Fatal("spawn without a prompt must start waiting for input")
 	}
 	event(`{"hook_event_name":"SessionStart","session_id":"session-1"}`, "idle", 1)
 	event(`{"hook_event_name":"UserPromptSubmit","session_id":"session-1","prompt":"build fixture"}`, "working", 2)

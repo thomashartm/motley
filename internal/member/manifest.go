@@ -79,6 +79,18 @@ type IssueRef struct {
 
 func (m Manifest) Imported() bool { return m.ClaudeSession != "" || m.CodexSession != "" }
 
+// SendsPrompt reports whether launching the agent passes the saved initial prompt.
+func (m Manifest) SendsPrompt(resume bool) bool { return !resume && (m.Prompt || m.Blueprint != "") }
+
+// LaunchStatus is shown until the agent's first hook. Codex and OpenCode report
+// nothing before the first prompt, so an agent without one is waiting for input.
+func (m Manifest) LaunchStatus(resume bool) string {
+	if m.SendsPrompt(resume) {
+		return "starting"
+	}
+	return "idle"
+}
+
 func (m Manifest) CheckWorkspace(cwd string) error {
 	if !filepath.IsAbs(cwd) || !sameDirectory(m.Worktree, cwd) {
 		return fmt.Errorf("workspace mismatch: member %s expects %s, but the agent reports %s; stop this conversation and import it under its own workspace", m.ID, m.Worktree, cwd)
