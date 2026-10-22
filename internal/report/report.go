@@ -287,6 +287,22 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 		}
 		contextText = strings.TrimSuffix(string(data), "\n")
 	}
+	// Append history before the slower status updates, so a report cut off by
+	// the timeout never shows a status its history lacks.
+	logged := event
+	if logged.Status == "" {
+		logged.Status = previous.Status
+	}
+	retained := event.Event == "SessionStart" || event.Event == "Stop" || event.Event == "Notification" || event.Event == "SessionEnd"
+	if changed || retained {
+		line, err := state.EncodeEvent(logged)
+		if err != nil {
+			return err
+		}
+		if _, err := f.Write(line); err != nil {
+			return err
+		}
+	}
 	if direct {
 		directStatus.Agent, directStatus.Seen = manifest.Agent, event.TS.Unix()
 		if event.Status != "" {
@@ -301,19 +317,6 @@ func recordTarget(ctx context.Context, id, agent string, event state.Event, exte
 	}
 	if !external && !direct {
 		if err := tmux.ReportUpdate(ctx, id, event.Status, contextText, changed, event.TS.Unix()); err != nil {
-			return err
-		}
-	}
-	if event.Status == "" {
-		event.Status = previous.Status
-	}
-	retained := event.Event == "SessionStart" || event.Event == "Stop" || event.Event == "Notification" || event.Event == "SessionEnd"
-	if changed || retained {
-		line, err := state.EncodeEvent(event)
-		if err != nil {
-			return err
-		}
-		if _, err := f.Write(line); err != nil {
 			return err
 		}
 	}

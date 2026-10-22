@@ -61,6 +61,8 @@ func accessDescription(access string) string {
 		return "EXT · External terminal or application"
 	case "MIX":
 		return "MIX · Managed tmux and external conversations"
+	case "GHO":
+		return "GHO · Direct Ghostty window"
 	default:
 		return "No live connection"
 	}
