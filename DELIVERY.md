@@ -2143,3 +2143,9 @@ Running direct Ghostty agents showed "No live connection" in Details: the
 access code `GHO` had no description and fell through to the default. Details
 now show "GHO · Direct Ghostty window". Added
 `TestDetailsDescribeDirectGhosttyAccess`; `go test ./...` passes.
+
+CI then failed `TestClaudeReportingEndToEnd`: the status showed `idle` but the
+event log lacked the matching Notification line. `motley report` stops after
+250 ms; it updated the tmux or Ghostty status first and appended history last,
+so on a slow runner the status changed while history lost the event. History is
+now appended before the status updates.
