@@ -2136,3 +2136,10 @@ Two causes put waiting agents under WORKING:
 exiting fixture agent moved to ENDED; it now waits for that move. Added
 `TestLaunchStatus` and `TestBusyBackgroundShellAfterFinishedTurnIsWaiting`;
 `go test ./...` and `go vet ./...` pass.
+
+## Ghostty access label — 2026-10-22
+
+Running direct Ghostty agents showed "No live connection" in Details: the
+access code `GHO` had no description and fell through to the default. Details
+now show "GHO · Direct Ghostty window". Added
+`TestDetailsDescribeDirectGhosttyAccess`; `go test ./...` passes.

@@ -56,3 +56,13 @@ func TestDetailsLegacyIdentityAndSaveRefresh(t *testing.T) {
 		t.Fatalf("saved metadata not visible at top: %s", view)
 	}
 }
+
+func TestDetailsDescribeDirectGhosttyAccess(t *testing.T) {
+	m := actionModel(120, 30)
+	r := row("ghostty-fixture", true)
+	r.LaunchTarget = "ghostty"
+	m = update(m, snapshot{rows: []member.Row{r}})
+	if flat := strings.Join(strings.Fields(ansi.Strip(m.memberDetails())), " "); !strings.Contains(flat, "Access: GHO · Direct Ghostty window") {
+		t.Fatal(flat)
+	}
+}
