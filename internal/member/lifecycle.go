@@ -23,6 +23,7 @@ import (
 type RetireCheck struct {
 	Manifest   Manifest
 	Dirty      bool
+	Detached   bool
 	Ahead      int
 	ComparedTo string
 	// OpenPR is a best-effort warning, never a refusal risk.
@@ -33,6 +34,9 @@ func (c RetireCheck) Risks() []string {
 	var risks []string
 	if c.Dirty {
 		risks = append(risks, "uncommitted or untracked files")
+	}
+	if c.Detached {
+		risks = append(risks, "detached HEAD; commits outside a branch are lost")
 	}
 	if c.Ahead > 0 {
 		noun := "commits"
@@ -93,6 +97,11 @@ func inspectRetire(m Manifest, checkChanges bool) (RetireCheck, error) {
 			return c, err
 		}
 		c.Dirty = status != ""
+		current, err := gitx.Output(m.Worktree, "branch", "--show-current")
+		if err != nil {
+			return c, err
+		}
+		c.Detached = current == ""
 	}
 	head := "refs/heads/" + m.Branch
 	if m.Branch == "" {

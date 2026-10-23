@@ -257,17 +257,40 @@ func TestAdoptAndRetireSafeguards(t *testing.T) {
 			t.Fatalf("adopt main: %s %v", out, err)
 		}
 	})
-	t.Run("force cannot remove changed ownership", func(t *testing.T) {
+	t.Run("retire removes a worktree whose agent switched branches", func(t *testing.T) {
+		f := newMemberFixture(t, bin, "main")
+		f.motley("spawn", "--repo", "api", "--branch", "feat/switched", "--detach")
+		id := "feat-switched"
+		m := f.manifest(id)
+		f.git(m.Worktree, "checkout", "-b", "different")
+		f.motley("retire", id)
+		if _, err := os.Stat(m.Worktree); !os.IsNotExist(err) {
+			t.Fatal("worktree retained", err)
+		}
+		f.git(f.repo, "show-ref", "--verify", "refs/heads/different")
+		if out, err := exec.Command("git", "-C", f.repo, "show-ref", "--verify", "refs/heads/"+m.Branch).CombinedOutput(); err == nil {
+			t.Fatal("recorded branch retained", string(out))
+		}
+	})
+	t.Run("detached HEAD needs force", func(t *testing.T) {
+		f := newMemberFixture(t, bin, "main")
+		f.motley("spawn", "--repo", "api", "--branch", "feat/detached", "--detach")
+		id := "feat-detached"
+		m := f.manifest(id)
+		f.git(m.Worktree, "checkout", "--detach")
+		if out := f.refused("retire", id); !strings.Contains(out, "detached HEAD") {
+			t.Fatal(out)
+		}
+		f.motley("retire", id, "--force")
+		if _, err := os.Stat(m.Worktree); !os.IsNotExist(err) {
+			t.Fatal("worktree retained", err)
+		}
+	})
+	t.Run("force cannot remove the main checkout", func(t *testing.T) {
 		f := newMemberFixture(t, bin, "main")
 		f.motley("spawn", "--repo", "api", "--branch", "feat/guard", "--detach")
 		id := "feat-guard"
 		m := f.manifest(id)
-		f.git(m.Worktree, "checkout", "-b", "different")
-		if out := f.refused("retire", id, "--force"); !strings.Contains(out, "identity changed") {
-			t.Fatal(out)
-		}
-		assertListState(t, f.motley("ls"), id, "alive")
-		f.git(m.Worktree, "checkout", m.Branch)
 		// A malformed manifest must never authorize removal of the main checkout.
 		m.Worktree = m.RepoPath
 		data, err := toml.Marshal(m)
