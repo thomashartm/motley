@@ -13,7 +13,8 @@ func Protected(branch string) bool {
 	return branch == "main" || branch == "master" || branch == "develop"
 }
 
-// Linked verifies ownership before any removal, even for --force. A missing
+// Linked verifies ownership before any removal, even for --force. The checkout
+// may have moved to another feature branch or detached HEAD. A missing
 // directory/registration is allowed so retirement can resume after partial cleanup.
 func Linked(repo, path, branch string) (bool, error) {
 	return registered(repo, path, branch, true)
@@ -49,7 +50,10 @@ func registered(repo, path, branch string, removal bool) (bool, error) {
 		if p != target {
 			continue
 		}
-		if r.Bare || r.Branch != branch {
+		// Removal tolerates an agent switching branches or detaching HEAD; it
+		// still never takes a protected branch. Retire reports detached HEAD as a risk.
+		switched := removal && (r.Branch == "" || CheckFeatureBranch(repo, r.Branch) == nil)
+		if r.Bare || (r.Branch != branch && !switched) {
 			return false, fmt.Errorf("worktree identity changed at %s (branch %q, expected %q)", path, r.Branch, branch)
 		}
 		if !removal && target != main {
