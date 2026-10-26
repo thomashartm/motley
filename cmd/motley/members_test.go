@@ -201,7 +201,9 @@ func newMemberFixture(t *testing.T, bin, base string) *memberFixture {
 	for key, value := range map[string]string{
 		"HOME": root, "XDG_CONFIG_HOME": filepath.Join(root, "config"), "XDG_STATE_HOME": f.state,
 		"TMUX": "", "TMUX_PANE": "", "SHELL": "/bin/sh", "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1",
-		"HISTFILE":        "/dev/null",
+		"HISTFILE": "/dev/null",
+		// Agent hooks run "motley" from PATH; they must reach the binary under test.
+		"PATH":            filepath.Dir(bin) + string(os.PathListSeparator) + os.Getenv("PATH"),
 		"GIT_AUTHOR_NAME": "Motley Test", "GIT_AUTHOR_EMAIL": "motley@example.invalid", "GIT_COMMITTER_NAME": "Motley Test", "GIT_COMMITTER_EMAIL": "motley@example.invalid",
 		"GIT_DIR": "", "GIT_WORK_TREE": "", "GIT_INDEX_FILE": "",
 	} {

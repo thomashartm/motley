@@ -2,6 +2,7 @@
 package agents
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -19,6 +20,40 @@ func Binary(name string) (string, error) {
 		return "", fmt.Errorf("agent %s is not on PATH: %w", name, err)
 	}
 	return bin, nil
+}
+
+// HookMismatch warns when agent hooks, which run "motley report" from PATH,
+// would reach a different build than this one and lose member statuses.
+func HookMismatch() string {
+	self, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	hook, err := exec.LookPath("motley")
+	if err != nil {
+		return "Agent hooks cannot find motley on PATH; agent statuses will not update"
+	}
+	if sameBuild(self, hook) {
+		return ""
+	}
+	return fmt.Sprintf("Agent hooks run %s, a different build from %s; agent statuses may be lost", hook, self)
+}
+
+func sameBuild(a, b string) bool {
+	ia, errA := os.Stat(a)
+	ib, errB := os.Stat(b)
+	if errA != nil || errB != nil {
+		return false
+	}
+	if os.SameFile(ia, ib) {
+		return true
+	}
+	if ia.Size() != ib.Size() {
+		return false
+	}
+	da, errA := os.ReadFile(a)
+	db, errB := os.ReadFile(b)
+	return errA == nil && errB == nil && bytes.Equal(da, db)
 }
 
 // StartArgv uses the interactive CLIs' native prompt arguments. The separator
