@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/term"
+	"github.com/thomashartm/motley/internal/agents"
 	"github.com/thomashartm/motley/internal/crew"
 	"github.com/thomashartm/motley/internal/gh"
 	"github.com/thomashartm/motley/internal/member"
@@ -61,6 +62,7 @@ func Run(monitor bool, client string, bell bool) error {
 	poll := func() tea.Msg { return pollMembers(catalog, dir, inside) }
 	m := newModel(monitor, inside, client, poll)
 	m.bell = bell
+	m.message = agents.HookMismatch()
 	m.github = gh.Default()
 	cache := &detailCache{dir: dir}
 	m.fetchDetail = cache.command

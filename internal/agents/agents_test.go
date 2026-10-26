@@ -1,7 +1,10 @@
 package agents
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -60,5 +63,36 @@ func TestCodexClientUsesOriginalServer(t *testing.T) {
 	want := []string{"codex", "resume", "--remote", "unix://" + socket, "--", session}
 	if got := CodexClientArgv(socket, session); !reflect.DeepEqual(got, want) {
 		t.Fatal(got, want)
+	}
+}
+
+func TestHookMismatch(t *testing.T) {
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(self)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	t.Setenv("PATH", dir)
+	if got := HookMismatch(); !strings.Contains(got, "cannot find motley") {
+		t.Fatal(got)
+	}
+	hook := filepath.Join(dir, "motley")
+	// A byte-identical copy, as an install produces, is the same build.
+	if err := os.WriteFile(hook, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := HookMismatch(); got != "" {
+		t.Fatal(got)
+	}
+	data[len(data)-1] ^= 1
+	if err := os.WriteFile(hook, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := HookMismatch(); !strings.Contains(got, hook) || !strings.Contains(got, self) {
+		t.Fatal(got)
 	}
 }
