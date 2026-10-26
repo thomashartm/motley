@@ -69,19 +69,24 @@ func Run(monitor bool, client string, bell bool) error {
 	m.copyText = copyToClipboard(inside, os.Stdout)
 	var program *tea.Program
 	m.sendMsg = func(msg tea.Msg) { program.Send(msg) }
-	program = tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseAllMotion())
-	result, err := program.Run()
-	if err != nil {
-		return err
-	}
-	m = result.(Model)
-	if m.attachID != "" {
-		if err := member.PrepareOpen(m.attachID); err != nil {
+	for {
+		program = tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseAllMotion())
+		result, err := program.Run()
+		if err != nil {
 			return err
+		}
+		m = result.(Model)
+		if m.attachID == "" {
+			return nil
+		}
+		// A failed open returns to the overview instead of ending motley.
+		if err := member.PrepareOpen(m.attachID); err != nil {
+			m.message = "Cannot open " + m.attachID + ": " + err.Error()
+			m.attachID = ""
+			continue
 		}
 		return tmux.Attach(m.attachID)
 	}
-	return nil
 }
 
 func pollMembers(catalog *member.Catalog, dir string, inside bool) snapshot {

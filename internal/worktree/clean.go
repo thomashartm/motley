@@ -53,7 +53,9 @@ func registered(repo, path, branch string, removal bool) (bool, error) {
 		// Removal tolerates an agent switching branches or detaching HEAD; it
 		// still never takes a protected branch. Retire reports detached HEAD as a risk.
 		switched := removal && (r.Branch == "" || CheckFeatureBranch(repo, r.Branch) == nil)
-		if r.Bare || (r.Branch != branch && !switched) {
+		// An empty expected branch accepts any branch in a borrowed checkout.
+		borrowed := !removal && branch == ""
+		if r.Bare || (r.Branch != branch && !switched && !borrowed) {
 			return false, fmt.Errorf("worktree identity changed at %s (branch %q, expected %q)", path, r.Branch, branch)
 		}
 		if !removal && target != main {
