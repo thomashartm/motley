@@ -2,6 +2,7 @@ package member
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -80,5 +81,23 @@ func TestLaunchStatus(t *testing.T) {
 		if got := tt.m.LaunchStatus(tt.resume); got != tt.want {
 			t.Errorf("%s: got %q want %q", tt.name, got, tt.want)
 		}
+	}
+}
+
+func TestCheckCheckoutAllowsSwitchedBranchOnlyForImports(t *testing.T) {
+	repo := t.TempDir()
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"}, {"switch", "-q", "-c", "develop"}} {
+		if out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput(); err != nil {
+			t.Fatal(string(out), err)
+		}
+	}
+	spawned := Manifest{ID: "spawned", RepoPath: repo, Worktree: repo, Branch: "main"}
+	if err := spawned.CheckCheckout(); err == nil || !strings.Contains(err.Error(), "identity changed") {
+		t.Fatal("spawned member accepted a switched main checkout:", err)
+	}
+	imported := spawned
+	imported.CodexSession = "01a1658d-daa5-7d61-a44b-5e8a5274a453"
+	if err := imported.CheckCheckout(); err != nil {
+		t.Fatal("imported member refused its own checkout:", err)
 	}
 }

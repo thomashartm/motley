@@ -100,6 +100,7 @@ func (m Manifest) CheckWorkspace(cwd string) error {
 
 // CheckCheckout permits borrowed primary checkouts and non-Git imports, but
 // validates repository identity and feature branches for linked worktrees.
+// Imported checkouts are the user's own, so their branch may change.
 func (m Manifest) CheckCheckout() error {
 	if m.RepoPath == "" {
 		return nil
@@ -108,7 +109,11 @@ func (m Manifest) CheckCheckout() error {
 	if err != nil {
 		return err
 	}
-	registered, err := worktree.Registered(m.RepoPath, top, m.Branch)
+	branch := m.Branch
+	if m.Imported() {
+		branch = ""
+	}
+	registered, err := worktree.Registered(m.RepoPath, top, branch)
 	if err != nil {
 		return err
 	}
