@@ -1,5 +1,45 @@
 # Delivery checkpoints
 
+## Codex follows active worktree conversations — 2026-11-02
+
+Implemented on `fix/codex-session-tracking`. Imported Codex members follow the
+unique working root conversation in their saved worktree when the previous
+conversation becomes idle, waits, or unloads. A currently working binding stays
+stable; ambiguous replacements and incomplete discovery do not change identity.
+Changes persist under the lifecycle lock, preserve member settings, and release
+the old tmux client without stopping its conversation. Open and Reply use the
+saved binding; a released client cannot receive a reply intended for its replacement.
+
+Codex snapshots share one bounded connection per daemon, prioritize tracked
+threads, and preserve healthy results on individual read failures. The TUI
+accepts partial snapshots and shows failed rows as unknown instead of keeping
+stale attention. Unloaded threads no longer inherit terminal ready/idle status.
+Import validates the selected thread directly instead of rescanning unrelated
+threads. Regression coverage includes multiple conversations in one worktree,
+terminal selection and opening, rebinding, ambiguity, stale status and failures.
+
+Live validation: an existing member automatically rebound from its unloaded
+conversation to the working conversation in the same worktree. `motley ls`
+reported working and the manifest retained its member ID. No manual reimport
+or agent restart was needed.
+Focused Codex lifecycle/selection/following tests, internal package race checks,
+Go vet, golangci-lint v2.14.0 and Darwin/Linux amd64/arm64 builds passed. The full
+Go suite passed (CLI/terminal package: 246.492s), followed by passing focused
+Codex checks for the final incomplete-discovery guard (18.207s). `make test` hit the pre-existing OpenCode
+reporter timing failure: `plugin marks idle after an abort as interrupted until
+the next prompt` missed `session.created`; untouched main also missed that event
+in `plugin reports in order, ignores subagents, contains reporter failures`.
+Installer and uninstaller checks passed. No OpenCode files were changed.
+
+Aikido scanned all seven changed Go files: its only finding was the unchanged
+`exec.CommandContext(ctx, "claude", "stop", s.ID)` call. This passes an argument
+vector without invoking a shell, so the shell-injection report is a false positive.
+The updated executable was installed in the main checkout's `bin/motley` and
+`~/.local/bin/motley`, and the tmux monitor was restarted and checked live with
+the reported member in WORKING. Other existing Motley windows retain their
+loaded executable until reopened. PR publication to `main` was requested;
+hosted CI is pending publication.
+
 ## Session name and purpose in Details — 2026-10-06
 
 Repository rules checked: local Git/gh CLI, this linked worktree stays on

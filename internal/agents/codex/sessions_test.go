@@ -141,7 +141,7 @@ func TestSessionStatus(t *testing.T) {
 		state string
 		flags []string
 		want  string
-	}{{"idle", nil, "idle"}, {"active", nil, "working"}, {"active", []string{"waitingOnUserInput"}, "question"}, {"active", []string{"waitingOnUserInput", "waitingOnApproval"}, "permission"}, {"systemError", nil, "alive"}} {
+	}{{"idle", nil, "idle"}, {"active", nil, "working"}, {"active", []string{"waitingOnUserInput"}, "question"}, {"active", []string{"waitingOnUserInput", "waitingOnApproval"}, "permission"}, {"systemError", nil, "unknown"}} {
 		s := Session{}
 		s.Status.Type = tc.state
 		s.Status.ActiveFlags = tc.flags

@@ -2,6 +2,7 @@ package member
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -77,7 +78,7 @@ func Import(agent, sessionID, name, crewID string) (Manifest, error) {
 		return Manifest{}, err
 	}
 	defer func() { _ = lock.Close() }()
-	sessions, err := DiscoverImports(agent)
+	sessions, err := discoverImports(agent, sessionID)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -320,6 +321,10 @@ type ImportCandidate struct {
 }
 
 func DiscoverImports(agent string) ([]ImportCandidate, error) {
+	return discoverImports(agent, "")
+}
+
+func discoverImports(agent, sessionID string) ([]ImportCandidate, error) {
 	var candidates []ImportCandidate
 	switch agent {
 	case "claude":
@@ -346,7 +351,21 @@ func DiscoverImports(agent string) ([]ImportCandidate, error) {
 			candidates = append(candidates, candidate)
 		}
 	case "codex":
-		sessions, err := codex.Sessions("")
+		var sessions []codex.Session
+		var err error
+		if sessionID == "" {
+			sessions, err = codex.Sessions("")
+		} else {
+			var socket string
+			socket, err = codex.DefaultSocket()
+			if err == nil {
+				var s codex.Session
+				s, err = codex.ReadSession(socket, sessionID)
+				if err == nil && s.Loaded() {
+					sessions = append(sessions, s)
+				}
+			}
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -380,36 +399,21 @@ func DiscoverImports(agent string) ([]ImportCandidate, error) {
 }
 
 func RefreshExternal(rows []Row) ([]Row, error) {
+	for i := range rows {
+		if rows[i].ClaudeSession != "" {
+			rows[i].External = !rows[i].Alive
+		}
+	}
 	rows, err := refreshClaude(rows)
 	if err != nil {
-		return rows, err
-	}
-	bySocket := map[string][]codex.Session{}
-	for i := range rows {
-		r := &rows[i]
-		if r.CodexSession == "" {
-			continue
-		}
-		sessions, ok := bySocket[r.CodexSocket]
-		if !ok {
-			sessions, err = codex.Sessions(r.CodexSocket)
-			if err != nil {
-				return rows, err
-			}
-			bySocket[r.CodexSocket] = sessions
-		}
-		r.External = !r.Alive
-		for _, s := range sessions {
-			if s.ID == r.CodexSession {
-				if !sameDirectory(s.Cwd, r.Worktree) {
-					return rows, fmt.Errorf("codex session directory changed; remove and import the member again")
-				}
-				r.Alive, r.Status, r.Seen = true, s.MotleyStatus(), time.Now().Unix()
-				break
+		for i := range rows {
+			if rows[i].ClaudeSession != "" {
+				rows[i].Alive, rows[i].Status = true, "unknown"
 			}
 		}
 	}
-	return rows, nil
+	codexErr := refreshCodex(rows)
+	return rows, errors.Join(err, codexErr)
 }
 
 // ValidateCodex checks the saved thread on its original server before connecting.

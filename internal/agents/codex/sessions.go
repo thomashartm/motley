@@ -3,6 +3,7 @@ package codex
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os/exec"
@@ -49,7 +50,7 @@ func (s Session) MotleyStatus() string {
 	case "idle":
 		return "idle"
 	default:
-		return "alive"
+		return "unknown"
 	}
 }
 
@@ -162,6 +163,12 @@ func (c *sessionClient) read(socket, id string) (Session, error) {
 // Sessions queries only loaded threads on an existing local daemon. No server,
 // thread or turn is created, resumed, subscribed to or interrupted.
 func Sessions(socket string) ([]Session, error) {
+	return Snapshot(socket, nil)
+}
+
+// Snapshot reads loaded conversations and saved bindings over one bounded connection.
+// Valid results survive an individual thread failure; callers must not rebind on error.
+func Snapshot(socket string, tracked []string) ([]Session, error) {
 	if socket == "" {
 		var err error
 		socket, err = DefaultSocket()
@@ -175,8 +182,35 @@ func Sessions(socket string) ([]Session, error) {
 	}
 	defer func() { _ = c.conn.Close() }()
 	var sessions []Session
+	var readErrors error
 	cursor := ""
 	seen := map[string]bool{}
+	read := map[string]bool{}
+	readThread := func(id string, keepUnloaded bool) {
+		if read[id] {
+			return
+		}
+		read[id] = true
+		var reply struct {
+			Thread Session `json:"thread"`
+		}
+		if err := c.call("thread/read", map[string]any{"threadId": id, "includeTurns": false}, &reply); err != nil {
+			readErrors = errors.Join(readErrors, fmt.Errorf("%s: %w", id, err))
+			return
+		}
+		s := reply.Thread
+		if s.ID != id || s.Status.Type == "" {
+			readErrors = errors.Join(readErrors, fmt.Errorf("codex returned incomplete thread metadata for %s", id))
+			return
+		}
+		if s.Importable() && (s.Loaded() || keepUnloaded) {
+			s.Socket = socket
+			sessions = append(sessions, s)
+		}
+	}
+	for _, id := range tracked {
+		readThread(id, true)
+	}
 	for {
 		var page struct {
 			Data []string `json:"data"`
@@ -187,35 +221,23 @@ func Sessions(socket string) ([]Session, error) {
 			params["cursor"] = cursor
 		}
 		if err := c.call("thread/loaded/list", params, &page); err != nil {
-			return nil, err
+			readErrors = errors.Join(readErrors, err)
+			break
 		}
 		for _, id := range page.Data {
-			// Skip unsupported thread kinds without fetching their transcript.
-			var reply struct {
-				Thread Session `json:"thread"`
-			}
-			if err := c.call("thread/read", map[string]any{"threadId": id, "includeTurns": false}, &reply); err != nil {
-				return nil, err
-			}
-			s := reply.Thread
-			if s.ID != id || s.Status.Type == "" {
-				return nil, fmt.Errorf("codex returned incomplete thread metadata")
-			}
-			if s.Importable() && s.Loaded() {
-				s.Socket = socket
-				sessions = append(sessions, s)
-			}
+			readThread(id, false)
 		}
 		if page.Next == "" {
 			break
 		}
 		if seen[page.Next] {
-			return nil, fmt.Errorf("codex session pagination repeated a cursor")
+			readErrors = errors.Join(readErrors, fmt.Errorf("codex session pagination repeated a cursor"))
+			break
 		}
 		seen[page.Next] = true
 		cursor = page.Next
 	}
-	return sessions, nil
+	return sessions, readErrors
 }
 
 func ReadSession(socket, id string) (Session, error) {
