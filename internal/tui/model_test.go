@@ -225,3 +225,17 @@ func TestPinPickerKeepsSelectionVisible(t *testing.T) {
 		}
 	}
 }
+
+func TestPartialRefreshUpdatesHealthyCodex(t *testing.T) {
+	m := newModel(false, false, "", nil)
+	m = update(m, snapshot{rows: []member.Row{statusRow("codex", "idle", 1), statusRow("broken", "idle", 1)}})
+	m = update(m, snapshot{rows: []member.Row{statusRow("codex", "working", 2), statusRow("broken", "unknown", 0)}, err: errors.New("broken session unavailable")})
+	for _, r := range m.rows {
+		if section(r) == "NEEDS YOU" {
+			t.Fatalf("stale attention after partial refresh: %+v", r)
+		}
+	}
+	if m.pollError == "" {
+		t.Fatal("partial refresh error was hidden")
+	}
+}

@@ -133,11 +133,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case snapshot:
+		m.pollError = ""
 		if msg.err != nil {
 			m.pollError = msg.err.Error()
-			return m, nextPoll()
+			if msg.rows == nil {
+				return m, nextPoll()
+			}
 		}
-		m.pollError = ""
 		id := m.selectedID()
 		crewKey := m.currentEntry().key()
 		old := make(map[string]member.Row, len(m.rows))

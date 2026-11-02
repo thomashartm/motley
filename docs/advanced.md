@@ -79,6 +79,19 @@ mtly import --agent codex <session-id> --crew <crew-id>
 Codex import excludes standalone `--no-daemon`, remote, ephemeral and subagent
 sessions. Import does not restart the agent or create a worktree.
 
+Imported Codex entries follow the active conversation in their worktree. When
+the previous conversation becomes idle, waits for input, or unloads, Motley
+automatically tracks the single working conversation there. If the previous
+conversation unloads and only one live conversation remains, Motley follows it.
+Your custom name, crew and other settings stay with the entry; an automatic
+conversation title updates. An old Motley terminal is released without stopping
+its conversation, so opening the entry connects to the new one.
+
+Motley keeps a currently working conversation when several share a worktree.
+If a replacement is ambiguous, or discovery fails, it does not guess or change
+the saved binding. Failed reads or incomplete discovery show unknown instead of
+stale attention; confirmed working entries keep updating.
+
 ### Switch the tracked Claude session
 
 Use this when a member follows the wrong terminal or conversation:
