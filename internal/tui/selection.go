@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/rivo/uniseg"
 	"github.com/thomashartm/motley/internal/member"
+	"github.com/thomashartm/motley/internal/state"
 )
 
 type selectionLine struct {
@@ -29,7 +30,7 @@ func (m Model) memberCopyLine(r member.Row) string {
 		name = r.ID
 	}
 	ticket, _ := ticketLink(r)
-	return strings.Join([]string{r.CurrentStatus(), clean(r.Agent), r.Access(), r.SessionLocation(), clean(name), clean(ticket), clean(m.crewFor(r.Crew).Title)}, "\t")
+	return strings.Join([]string{state.StatusLabel(r.CurrentStatus()), clean(r.Agent), r.Access(), r.SessionLocation(), clean(name), clean(ticket), clean(m.crewFor(r.Crew).Title)}, "\t")
 }
 
 // Visible rows carry stable identities. Refreshes can move rows, but cannot

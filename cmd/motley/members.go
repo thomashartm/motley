@@ -127,7 +127,7 @@ func listCommand() *cobra.Command {
 				if ticket == "" {
 					ticket = "—"
 				}
-				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", row.ID, ticket, row.Repo, row.Branch, row.Agent, row.CurrentStatus(), row.SessionLocation(), status); err != nil {
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", row.ID, ticket, row.Repo, row.Branch, row.Agent, state.StatusLabel(row.CurrentStatus()), row.SessionLocation(), status); err != nil {
 					return err
 				}
 			}

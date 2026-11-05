@@ -102,7 +102,7 @@
       },
       "status": "ready",
       "summary": "motley fixture complete",
-      "detail": {"active_agents": "[]"}
+      "detail": {"active_agents": "[]", "shells": "0", "monitors": "0"}
     },
     {
       "name": "SessionEnd",
@@ -258,7 +258,7 @@
         },
         "tool_use_id": "toolu_01AHHiGNtEP7ZjfaUeQbnteK"
       },
-      "status": "working",
+      "status": "waiting",
       "summary": "Bash: touch .tools/claude-w3-capture/permission-marker",
       "detail": {
         "tool": "Bash",

@@ -72,3 +72,19 @@ func TestNotificationFallbackAndStop(t *testing.T) {
 		t.Fatal("a transcript failure must retain ready status")
 	}
 }
+
+func TestProcessToolStatus(t *testing.T) {
+	for _, tc := range []struct{ tool, input, want string }{
+		{"Bash", `{}`, "waiting"},
+		{"Bash", `{"run_in_background":true}`, "working"},
+		{"TaskOutput", `{"task_id":"p","block":true}`, "waiting"},
+		{"TaskOutput", `{"task_id":"p"}`, "waiting"},
+		{"TaskOutput", `{"task_id":"p","block":false}`, "working"},
+		{"Read", `{}`, "working"},
+	} {
+		e, err := Parse([]byte(`{"hook_event_name":"PreToolUse","tool_name":"`+tc.tool+`","tool_input":`+tc.input+`}`), "")
+		if err != nil || e.Status != tc.want {
+			t.Fatalf("%s %s: %+v %v", tc.tool, tc.input, e, err)
+		}
+	}
+}

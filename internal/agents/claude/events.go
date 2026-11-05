@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/thomashartm/motley/internal/state"
@@ -48,10 +49,20 @@ func Parse(data []byte, eventName string) (state.Event, error) {
 	case "UserPromptSubmit":
 		e.Status = "working"
 		e.Summary = strings.SplitN(p.Prompt, "\n", 2)[0]
-	case "PreToolUse", "PostToolUse":
+	case "PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionDenied":
 		e.Status = "working"
 		var input map[string]json.RawMessage
 		_ = json.Unmarshal(p.Input, &input)
+		// shortcut: tool activity follows the latest hook; track tool_use_id if parallel waits need exact status.
+		if p.Event == "PreToolUse" {
+			var background bool
+			_ = json.Unmarshal(input["run_in_background"], &background)
+			block := true
+			_ = json.Unmarshal(input["block"], &block)
+			if (p.Tool == "Bash" && !background) || (p.Tool == "TaskOutput" && block) {
+				e.Status = "waiting"
+			}
+		}
 		var compact bytes.Buffer
 		_ = json.Compact(&compact, p.Input)
 		text := compact.String()
@@ -125,13 +136,24 @@ func Parse(data []byte, eventName string) (state.Event, error) {
 	}
 	if (p.Event == "Stop" || p.Event == "SubagentStop") && p.BackgroundTasks != nil {
 		ids := []string{}
+		shells, monitors := 0, 0
 		for _, task := range *p.BackgroundTasks {
+			if task.Status == "running" && task.ID != "" {
+				switch task.Type {
+				case "shell":
+					shells++
+				case "monitor":
+					monitors++
+				}
+			}
 			if task.Type == "subagent" && task.Status == "running" && task.ID != "" {
 				ids = append(ids, task.ID)
 			}
 		}
 		data, _ := json.Marshal(ids)
 		e.Detail["active_agents"] = string(data)
+		e.Detail["shells"] = strconv.Itoa(shells)
+		e.Detail["monitors"] = strconv.Itoa(monitors)
 	}
 	return e, nil
 }

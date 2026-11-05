@@ -103,7 +103,15 @@ You can also click members, actions and the footer controls.
 | Copy a status/error message | **c** |
 
 **Needs you** includes questions, permission requests, completed replies and idle
-agents. **Working** includes agents with active subagents. **Ended / dead** means
+agents. **Working** includes agents with active subagents. **Waiting for process**
+means Claude's latest tool hook is a blocking shell or task-output call.
+Overlapping tools can show Working after one finishes while another still waits.
+**Background processes** means a turn ended while a shell or monitor remained active. Details shows the
+last reported shell/monitor counts, including while a question needs you.
+Counts refresh on Claude Stop/SubagentStop hooks; an idle discovery clears shell
+activity, while armed monitors remain visible until a newer snapshot clears them.
+Run `mtly hooks install claude` after updating to enable failed/denied-tool
+reporting as well. **Ended / dead** means
 the agent ended or its session is no longer running. Open the agent to approve permissions.
 
 Keep an overview in another terminal with `mtly monitor`.

@@ -2,8 +2,10 @@ package claude
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/thomashartm/motley/internal/state"
@@ -13,6 +15,8 @@ import (
 // notification does not finish work that is still running in a subagent.
 // The report writer serializes updates under the member's event-log lock.
 type Activity struct {
+	Shells    int                    `json:"shells,omitempty"`
+	Monitors  int                    `json:"monitors,omitempty"`
 	SessionID string                 `json:"session_id"`
 	Parent    state.Event            `json:"parent"`
 	Children  map[string]state.Event `json:"children,omitempty"`
@@ -53,10 +57,17 @@ func (a *Activity) Apply(e state.Event) state.Event {
 			a.Children = active
 		}
 	}
+	if value, ok := e.Detail["shells"]; ok {
+		a.Shells, _ = strconv.Atoi(value)
+	}
+	if value, ok := e.Detail["monitors"]; ok {
+		a.Monitors, _ = strconv.Atoi(value)
+	}
 	id := e.Detail["agent_id"]
 	switch {
 	case e.Event == "SessionEnd" || e.Event == "AgentExit":
 		a.Children = nil
+		a.Shells, a.Monitors = 0, 0
 		a.Parent = e
 	case e.Event == "SubagentStop":
 		delete(a.Children, id)
@@ -88,12 +99,39 @@ func (a *Activity) Apply(e state.Event) state.Event {
 		}
 	}
 	if current.Status != "permission" && current.Status != "question" && len(a.Children) > 0 {
-		current.Status = "working"
-		current.Summary = "Subagents are working"
+		current.Status = "waiting"
+		current.Summary = "Subagents are waiting for processes"
+		if a.Parent.Status == "working" {
+			current.Status = "working"
+		}
+		for _, child := range a.Children {
+			if child.Status != "waiting" {
+				current.Status = "working"
+				break
+			}
+		}
+		if current.Status == "working" {
+			current.Summary = "Subagents are working"
+		}
 		current.Detail = nil
+	}
+	if (current.Status == "ready" || current.Status == "idle") && (a.Shells > 0 || a.Monitors > 0) {
+		current.Status = "background"
 	}
 	if current.Status == "" {
 		current.Status = "working"
+	}
+	if a.Shells > 0 || a.Monitors > 0 || current.Detail["shells"] != "" || current.Detail["monitors"] != "" {
+		detail := make(map[string]string, len(current.Detail)+2)
+		for k, v := range current.Detail {
+			detail[k] = v
+		}
+		delete(detail, "shells")
+		delete(detail, "monitors")
+		if a.Shells > 0 || a.Monitors > 0 {
+			detail["shells"], detail["monitors"] = strconv.Itoa(a.Shells), strconv.Itoa(a.Monitors)
+		}
+		current.Detail = detail
 	}
 	current.Agent, current.AgentSessionID = "claude", e.AgentSessionID
 	current.Event, current.TS = e.Event, e.TS
@@ -105,20 +143,43 @@ func (a *Activity) Apply(e state.Event) state.Event {
 }
 
 // Status merges a live discovery result with hook evidence. A waiting discovery
-// result wins; idle may describe a parent with active children. Busy also covers
-// background shells, so a finished turn without running subagents is waiting.
+// result wins; idle may describe a parent with active children or an armed monitor.
 func (a Activity) Status(sessionID, live string, startedAt int64) (string, int64) {
 	if a.SessionID != sessionID || a.Current.TS.IsZero() || a.Current.TS.Before(time.UnixMilli(startedAt)) {
 		return live, 0
+	}
+	if live == "idle" && a.Current.Status == "background" {
+		if a.Monitors > 0 {
+			return "background", a.Since
+		}
+		return a.Parent.Status, 0
+	}
+	if live == "working" && (a.Current.Status == "waiting" || a.Current.Status == "background") {
+		return a.Current.Status, a.Since
 	}
 	if live == "idle" && (len(a.Children) > 0 || a.Current.Status == "ready" || a.Current.Status == "question" || a.Current.Status == "permission") {
 		return a.Current.Status, a.Since
 	}
 	if live == "working" && len(a.Children) == 0 && (a.Current.Status == "ready" || a.Current.Status == "idle") {
-		return a.Current.Status, a.Since
+		return "background", 0
 	}
 	if live == a.Current.Status {
 		return live, a.Since
 	}
 	return live, 0
+}
+
+// ProcessSummary describes the last hook snapshot, not an OS process inventory.
+func (a Activity) ProcessSummary(sessionID, live string, startedAt int64) string {
+	if a.SessionID != sessionID || a.Current.TS.IsZero() || a.Current.TS.Before(time.UnixMilli(startedAt)) {
+		return ""
+	}
+	shells := a.Shells
+	if live == "idle" {
+		shells = 0
+	}
+	if shells == 0 && a.Monitors == 0 {
+		return ""
+	}
+	return fmt.Sprintf("Last reported: %d shell(s), %d monitor(s)", shells, a.Monitors)
 }

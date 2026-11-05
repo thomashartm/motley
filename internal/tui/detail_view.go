@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/thomashartm/motley/internal/gitx"
 	"github.com/thomashartm/motley/internal/member"
+	"github.com/thomashartm/motley/internal/state"
 	"github.com/thomashartm/motley/internal/tmux"
 )
 
@@ -71,10 +72,13 @@ func (m Model) memberDetails() string {
 		ticketURL = r.Issue.URL
 	}
 	fields := []detailField{
-		{"Status", lipgloss.NewStyle().Foreground(sc).Render(icon+" "+status) + " · " + since(r)},
+		{"Status", lipgloss.NewStyle().Foreground(sc).Render(icon+" "+state.StatusLabel(status)) + " · " + since(r)},
 		{"Access", accessDescription(r.Access())},
 		{"Ticket", link(ticket, ticketURL)},
 		{"Crew", m.crewLabel(r.Crew)},
+	}
+	if len(r.ClaudeStatuses) == 0 && m.event.Status == status && (m.event.Detail["shells"] != "" || m.event.Detail["monitors"] != "") {
+		fields = append(fields, detailField{"Processes", "Last reported: " + clean(m.event.Detail["shells"]) + " shell(s), " + clean(m.event.Detail["monitors"]) + " monitor(s)"})
 	}
 	for _, s := range r.ClaudeStatuses {
 		label := s.Location()
@@ -86,7 +90,10 @@ func (m Model) memberDetails() string {
 		default:
 			label = "Session"
 		}
-		fields = append(fields, detailField{label, clean(s.Status + " · " + accessDescription(s.Access()) + " · " + s.Name + " · " + s.ID)})
+		fields = append(fields, detailField{label, clean(state.StatusLabel(s.Status) + " · " + accessDescription(s.Access()) + " · " + s.Name + " · " + s.ID)})
+		if s.Processes != "" {
+			fields = append(fields, detailField{"Processes", clean(s.Processes)})
+		}
 		if s.Status == "moved" {
 			fields = append(fields, detailField{"New workspace", clean(s.Cwd)}, detailField{"Recovery", "Use Actions → Reimport session (S) to update this member."})
 		}
