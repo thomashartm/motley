@@ -99,6 +99,28 @@
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "motley report --agent claude",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "PermissionDenied": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "motley report --agent claude",
+            "timeout": 1
+          }
+        ]
+      }
     ]
   }
 }

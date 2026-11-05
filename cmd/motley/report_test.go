@@ -64,22 +64,23 @@ func TestClaudeReportingEndToEnd(t *testing.T) {
 	}
 	event(`{"hook_event_name":"SessionStart","session_id":"session-1"}`, "idle", 1)
 	event(`{"hook_event_name":"UserPromptSubmit","session_id":"session-1","prompt":"build fixture"}`, "working", 2)
+	event(`{"hook_event_name":"PreToolUse","session_id":"session-1","tool_name":"Bash","tool_input":{"command":"pnpm test"}}`, "waiting", 3)
 	f.tmux("set-option", "-t", "="+id+":", "@motley_since", "1")
 	f.tmux("set-option", "-t", "="+id+":", "@motley_seen", "1")
-	event(`{"hook_event_name":"PreToolUse","session_id":"session-1","tool_name":"Bash","tool_input":{"command":"pnpm test"}}`, "working", 2)
+	event(`{"hook_event_name":"PreToolUse","session_id":"session-1","tool_name":"Bash","tool_input":{"command":"pnpm test"}}`, "waiting", 3)
 	options := f.tmux("display-message", "-p", "-t", "="+id+":", "#{@motley_since}|#{@motley_seen}")
 	if !strings.HasPrefix(options, "1|") || options == "1|1" {
 		t.Fatalf("seen/since semantics: %s", options)
 	}
-	event(`{"hook_event_name":"Notification","session_id":"session-1","notification_type":"permission_prompt","message":"Claude needs your permission"}`, "permission", 3)
+	event(`{"hook_event_name":"Notification","session_id":"session-1","notification_type":"permission_prompt","message":"Claude needs your permission"}`, "permission", 4)
 	last, err := state.LatestEvent(logPath)
 	if err != nil || last.Detail["input"] != "pnpm test" {
 		t.Fatalf("lost permission command: %+v %v", last, err)
 	}
-	event(`{"hook_event_name":"PostToolUse","session_id":"session-1","tool_name":"Bash","tool_input":{"command":"pnpm test"}}`, "working", 4)
+	event(`{"hook_event_name":"PostToolUse","session_id":"session-1","tool_name":"Bash","tool_input":{"command":"pnpm test"}}`, "working", 5)
 	question := `{"hook_event_name":"PreToolUse","session_id":"session-1","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Which fixture option?","options":[{"label":"Alpha","description":"First"},{"label":"Beta","description":"Second"}]}]}}`
-	event(question, "question", 5)
-	event(`{"hook_event_name":"Notification","session_id":"session-1","notification_type":"permission_prompt","message":"Claude needs your permission"}`, "question", 6)
+	event(question, "question", 6)
+	event(`{"hook_event_name":"Notification","session_id":"session-1","notification_type":"permission_prompt","message":"Claude needs your permission"}`, "question", 7)
 	last, err = state.LatestEvent(logPath)
 	if err != nil || !strings.Contains(last.Detail["question"], "Beta") {
 		t.Fatal("question overwritten by generic permission notification", err)
@@ -94,14 +95,14 @@ func TestClaudeReportingEndToEnd(t *testing.T) {
 	cmd := exec.Command(bin, "--monitor")
 	terminal := startTerminal(t, cmd)
 	eventually(t, func() bool { return strings.Contains(terminal.text(), "Which fixture option?") })
-	event(`{"hook_event_name":"PostToolUse","session_id":"session-1","tool_name":"AskUserQuestion","tool_input":{}}`, "working", 7)
+	event(`{"hook_event_name":"PostToolUse","session_id":"session-1","tool_name":"AskUserQuestion","tool_input":{}}`, "working", 8)
 	eventually(t, func() bool { return strings.Contains(terminal.text(), "WORKING") })
 	bells := strings.Count(terminal.text(), "\a")
 	tree := filepath.Join(f.trees, "api/feat-hooks")
 	writeFixture(t, filepath.Join(tree, "change.txt"), "new work\n", 0600)
 	f.git(tree, "add", "change.txt")
 	f.git(tree, "commit", "-m", "Agent work")
-	event(`{"hook_event_name":"Stop","session_id":"session-1","last_assistant_message":"Fixture implementation finished"}`, "ready", 8)
+	event(`{"hook_event_name":"Stop","session_id":"session-1","last_assistant_message":"Fixture implementation finished"}`, "ready", 9)
 	eventually(t, func() bool {
 		out := terminal.text()
 		return strings.Contains(out, "Fixture implementation finished") && strings.Contains(out, "NEW ATTENTION") && strings.Count(out, "\a") > bells
@@ -111,7 +112,7 @@ func TestClaudeReportingEndToEnd(t *testing.T) {
 	terminal.send(t, "\x1b[6~") // Page Down
 	eventually(t, func() bool { return strings.Contains(terminal.text(), "change.txt") })
 	terminal.send(t, "\x1b[5~") // Page Up
-	event(`{"hook_event_name":"Stop","session_id":"session-1","last_assistant_message":"Updated final response"}`, "ready", 9)
+	event(`{"hook_event_name":"Stop","session_id":"session-1","last_assistant_message":"Updated final response"}`, "ready", 10)
 	eventually(t, func() bool { return strings.Contains(terminal.text(), "Updated final response") })
 	if !strings.Contains(f.motley("ls"), "ready") {
 		t.Fatal("ls did not expose status")
@@ -119,10 +120,10 @@ func TestClaudeReportingEndToEnd(t *testing.T) {
 	if got := f.tmux("display-message", "-p", "-t", "="+id+":", "#{E:status-left}"); !strings.Contains(got, "ready") {
 		t.Fatalf("tmux status-left: %q", got)
 	}
-	event(`{"hook_event_name":"Notification","session_id":"session-1","notification_type":"idle_prompt","message":"Waiting for input"}`, "idle", 10)
-	event(`{"hook_event_name":"SessionEnd","session_id":"session-1"}`, "ended", 11)
+	event(`{"hook_event_name":"Notification","session_id":"session-1","notification_type":"idle_prompt","message":"Waiting for input"}`, "idle", 11)
+	event(`{"hook_event_name":"SessionEnd","session_id":"session-1"}`, "ended", 12)
 	f.report(id, "not JSON")
-	if status() != "ended" || count() != 11 {
+	if status() != "ended" || count() != 12 {
 		t.Fatal("bad JSON changed status/history")
 	}
 	f.report(id, "{}", "--bad-flag")

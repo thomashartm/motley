@@ -2189,3 +2189,55 @@ event log lacked the matching Notification line. `motley report` stops after
 250 ms; it updated the tmux or Ghostty status first and appended history last,
 so on a slow runner the status changed while history lost the event. History is
 now appended before the status updates.
+
+## Claude process visibility — 2026-11-05
+
+Implementation plan: preserve Claude's distinction between an executing tool,
+an ended turn with background processes, and a question requiring the user.
+Use the existing hook reducer and discovery; do not infer work from OS children
+(MCP helpers remain alive in idle sessions). No dependencies or private Claude
+protocols. Live inspection found five interactive sessions, one busy with Jest;
+no false-idle transition was observed during that snapshot.
+
+- [x] Add regression tests for blocking Bash/TaskOutput, shell and monitor Stop
+  snapshots, completion, failed tools, permissions, concurrent children and reset.
+- [x] Extend parsing/reduction and status validation with `waiting` and
+  `background`; preserve background counts independently of attention state.
+- [x] Expose readable labels and counts in Details, status icons/totals and CLI;
+  update hook installation for failed/denied tools and user documentation.
+- [x] Run relevant tests, the repository suite, security scan, and an isolated
+  real Claude smoke check; inspect the full diff before handing over.
+
+Completion evidence is bounded: Stop/SubagentStop snapshots are authoritative
+at capture time. Live idle can dismiss finished shell activity; monitors can
+stay armed while Claude is idle, so show their last reported snapshot explicitly.
+
+Validation/checkpoint:
+- Isolated Claude Code 2.1.318 smoke used only foreground `sleep 8` and
+  background `sleep 30`, temporary settings and an isolated Motley state folder.
+  Actual hooks produced idle → working → waiting → working → background (one
+  shell) → working → ready → ended; reporter errors: none. Existing sessions,
+  global hooks and installed binary were left untouched.
+- Real terminal regression `TestClaudeProcessesVisibleInCLIAndMonitor` passed
+  for waiting/background labels, permission priority, monitor snapshots and
+  return to ready. Counts are also covered for Motley-managed sessions.
+- Independent review found the approval-to-running regression: an old hook
+  permission must not beat live busy after approval. Fixed with a failing-then-
+  passing test. A stale managed-session count after an empty child snapshot was
+  similarly reproduced and fixed. Focused packages and `go vet ./...` pass.
+- Review minor (deferred): overlapping tools use the latest hook, so completion
+  of one tool can show Working while another still waits. This remains visibly
+  active, never idle; tracking per-tool IDs is outside this focused fix. The
+  limitation is stated in README and a `shortcut:` comment.
+- Aikido scanned all 16 changed code/config/fixture files, with no skipped paths.
+  Two warnings concern unchanged `os.OpenFile` calls in `internal/state/events.go`
+  (regular-file, bounded local state/transcript readers). This change adds no
+  file access or caller-controlled paths. The three files changed in the final
+  fix pass were scanned again: zero findings.
+- An early suite overlapped implementation and hit the old expected Working
+  assertion for Bash; its fixture was updated for Waiting and transition-log
+  counts. A subsequent full `make test` passed. Final `make test` after review fixes also passed (CLI suite: 237s).
+  `go vet ./...`, CI-pinned golangci-lint v2.14.0 (zero issues), `make build`,
+  `make cross-build` (Darwin/Linux, amd64/arm64) and `git diff --check` passed.
+  Prepared for PR delivery from `fix/claude-process-status` against `main`.
+  The installed binary and global hooks remain unchanged.

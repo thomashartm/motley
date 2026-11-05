@@ -146,3 +146,34 @@ fi
 		t.Fatal(rows, err)
 	}
 }
+
+func TestClaudeProcessesVisibleInCLIAndMonitor(t *testing.T) {
+	f := newMemberFixture(t, buildLifecycleBinary(t), "main")
+	session, process := fakeExternalClaude(t, f, f.repo)
+	writeSession := func(status string) {
+		data, err := json.Marshal([]claude.Session{{SessionID: session, PID: process.Process.Pid, Cwd: f.repo, Kind: "interactive", Status: status}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeFixture(t, filepath.Join(f.home, "sessions.json"), string(data), 0600)
+	}
+	writeSession("busy")
+	f.motley("import", session)
+	terminal := startTerminal(t, exec.Command(f.bin, "--monitor"))
+	for _, step := range []struct{ event, extra, live, label, heading string }{
+		{"PreToolUse", `,"tool_name":"Bash","tool_input":{"command":"sleep 8"}`, "busy", "waiting for process", "WAITING FOR PROCESS"},
+		{"Stop", `,"background_tasks":[{"id":"p","type":"shell","status":"running"}]`, "busy", "background processes", "BACKGROUND PROCESSES"},
+		{"Notification", `,"notification_type":"permission_prompt"`, "waiting", "question", "NEEDS YOU"},
+		{"Stop", `,"background_tasks":[{"id":"m","type":"monitor","status":"running"}]`, "idle", "background processes", "BACKGROUND PROCESSES"},
+		{"Stop", `,"background_tasks":[]`, "idle", "ready", "NEEDS YOU"},
+	} {
+		writeSession(step.live)
+		f.report("", fmt.Sprintf(`{"session_id":%q,"cwd":%q,"hook_event_name":%q%s}`, session, f.repo, step.event, step.extra))
+		if out := f.motley("ls"); !strings.Contains(out, step.label) {
+			t.Fatalf("want %s: %s", step.label, out)
+		}
+		eventually(t, func() bool {
+			return strings.Contains(terminal.text(), step.heading) && strings.Contains(terminal.text(), step.label)
+		})
+	}
+}

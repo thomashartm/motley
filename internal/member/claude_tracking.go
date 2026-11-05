@@ -32,9 +32,9 @@ func (m Manifest) ClaudeActivityPath(dir, sessionID string) string {
 }
 
 type ClaudeSessionStatus struct {
-	Managed                     bool
-	ID, Name, Kind, Status, Cwd string
-	Alive                       bool
+	Managed                                bool
+	ID, Name, Kind, Status, Cwd, Processes string
+	Alive                                  bool
 }
 
 func (s ClaudeSessionStatus) Access() string {
@@ -142,6 +142,7 @@ func (r *Row) refreshClaudeSessions(dir string, sessions []claude.Session) error
 					return err
 				}
 				entry.Status, since = activity.Status(id, s.MotleyStatus(), s.StartedAt)
+				entry.Processes = activity.ProcessSummary(id, s.MotleyStatus(), s.StartedAt)
 			}
 			break
 		}
@@ -155,7 +156,7 @@ func (r *Row) refreshClaudeSessions(dir string, sessions []claude.Session) error
 }
 
 func claudeStatusPriority(status string) int {
-	for priority, candidate := range strings.Fields("dead ended idle alive ready starting working question permission moved") {
+	for priority, candidate := range strings.Fields("dead ended idle alive ready background waiting starting working question permission moved") {
 		if candidate == status {
 			return priority
 		}

@@ -127,7 +127,7 @@ func Attention(status string) bool {
 }
 func ValidStatus(status string) bool {
 	switch status {
-	case "starting", "working", "permission", "question", "ready", "idle", "ended":
+	case "starting", "working", "waiting", "background", "permission", "question", "ready", "idle", "ended":
 		return true
 	}
 	return false
@@ -194,4 +194,15 @@ func LatestSessionID(path, agent string) (string, error) {
 		}
 	}
 	return id, scan.Err()
+}
+
+func StatusLabel(status string) string {
+	switch status {
+	case "waiting":
+		return "waiting for process"
+	case "background":
+		return "background processes"
+	default:
+		return status
+	}
 }

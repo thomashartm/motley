@@ -66,3 +66,46 @@ func TestDetailsDescribeDirectGhosttyAccess(t *testing.T) {
 		t.Fatal(flat)
 	}
 }
+
+func TestDetailsShowProcessStates(t *testing.T) {
+	for _, tc := range []struct{ status, label, group string }{
+		{"waiting", "waiting for process", "WAITING FOR PROCESS"},
+		{"background", "background processes", "BACKGROUND PROCESSES"},
+		{"permission", "permission", "NEEDS YOU"},
+	} {
+		for _, width := range []int{60, 120} {
+			m := actionModel(width, 30)
+			r := statusRow("process-fixture", tc.status, 1)
+			r.ClaudeStatuses = []member.ClaudeSessionStatus{{ID: "s", Alive: true, Status: tc.status, Processes: "Last reported: 1 shell(s), 1 monitor(s)"}}
+			m = update(m, snapshot{rows: []member.Row{r}})
+			view := ansi.Strip(m.memberDetails())
+			flat := strings.Join(strings.Fields(view), " ")
+			if !strings.Contains(flat, tc.label) || !strings.Contains(flat, "Last reported:") || !strings.Contains(flat, "monitor(s)") {
+				t.Fatal(flat)
+			}
+			if section(r) != tc.group {
+				t.Fatal(section(r))
+			}
+			icon, _ := statusIcon(tc.status)
+			if icon == "○" || !strings.Contains(totals([]member.Row{r}), icon+"1") {
+				t.Fatal("missing status icon/count")
+			}
+			for _, line := range strings.Split(view, "\n") {
+				if ansi.StringWidth(line) > m.detailWidth() {
+					t.Fatalf("overflow: %q", line)
+				}
+			}
+		}
+	}
+}
+
+func TestManagedDetailsShowBackgroundCounts(t *testing.T) {
+	m := actionModel(120, 30)
+	r := statusRow("managed-process", "permission", 1)
+	m = update(m, snapshot{rows: []member.Row{r}})
+	m.event = state.Event{Status: "permission", Detail: map[string]string{"shells": "1", "monitors": "2"}}
+	view := strings.Join(strings.Fields(ansi.Strip(m.memberDetails())), " ")
+	if !strings.Contains(view, "Last reported: 1 shell(s), 2 monitor(s)") {
+		t.Fatal(view)
+	}
+}

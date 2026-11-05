@@ -15,6 +15,12 @@ func section(row member.Row) string {
 	if state.Attention(s) {
 		return "NEEDS YOU"
 	}
+	if s == "waiting" {
+		return "WAITING FOR PROCESS"
+	}
+	if s == "background" {
+		return "BACKGROUND PROCESSES"
+	}
 	if s == "dead" || s == "ended" {
 		return "ENDED / DEAD"
 	}
@@ -26,8 +32,12 @@ func sectionOrder(row member.Row) int {
 		return 0
 	case "WORKING":
 		return 1
-	default:
+	case "WAITING FOR PROCESS":
 		return 2
+	case "BACKGROUND PROCESSES":
+		return 3
+	default:
+		return 4
 	}
 }
 func statusIcon(status string) (string, lipgloss.Color) {
@@ -42,6 +52,10 @@ func statusIcon(status string) (string, lipgloss.Color) {
 		return "✓", lipgloss.Color("2")
 	case "idle":
 		return "◌", lipgloss.Color("8")
+	case "waiting":
+		return "◷", lipgloss.Color("6")
+	case "background":
+		return "↻", lipgloss.Color("6")
 	case "working", "starting":
 		return "●", lipgloss.Color("4")
 	case "ended":
@@ -98,7 +112,7 @@ func totals(rows []member.Row) string {
 		counts[s]++
 	}
 	var parts []string
-	for _, s := range []string{"moved", "permission", "question", "ready", "idle", "working", "ended", "dead", "alive"} {
+	for _, s := range []string{"moved", "permission", "question", "ready", "idle", "working", "waiting", "background", "ended", "dead", "alive"} {
 		if counts[s] == 0 {
 			continue
 		}
