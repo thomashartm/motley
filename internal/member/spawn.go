@@ -6,6 +6,7 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 	"unicode"
@@ -23,7 +24,7 @@ import (
 
 type SpawnOptions struct {
 	LaunchTarget                                                    string
-	GhosttyWindow                                                   string // Empty uses the front window; new creates a window.
+	GhosttyWindow                                                   string // Direct: empty uses front window. Tmux: empty stays detached. new creates a window.
 	SourceRef                                                       string // Exact local or remote ref explicitly selected in the dialog.
 	Repo, Branch, Agent, Ticket, Name, Crew, Color, Blueprint, Mode string
 	Vars                                                            []string
@@ -38,6 +39,9 @@ type SpawnOptions struct {
 }
 
 func Prepare(cfg config.Config, opts SpawnOptions) (Prepared, error) {
+	if opts.GhosttyWindow != "" && runtime.GOOS != "darwin" {
+		return Prepared{}, fmt.Errorf("opening a Ghostty window requires macOS")
+	}
 	if err := ValidateLaunchTarget(opts.LaunchTarget); err != nil {
 		return Prepared{}, err
 	}

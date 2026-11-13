@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"runtime"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -50,6 +51,9 @@ func (m Model) actions() []navigationAction {
 			add("Member", "Refresh GitHub (u)", "u", "Fetches this member's PR state and issue title with gh. Nothing refreshes automatically.", false)
 		}
 		if !m.selectedRow().External {
+			if runtime.GOOS == "darwin" && m.selectedRow().Alive {
+				add("Member", "Open in Ghostty (w)", "w", "Attach this running tmux session in a new Ghostty window or a tab in an existing window. Closing the window leaves the agent running.", false)
+			}
 			replyLabel := "Reply (i)"
 			if len(m.selectedRow().ClaudeSessions) > 0 {
 				replyLabel = "Reply to primary (i)"
@@ -60,7 +64,7 @@ func (m Model) actions() []navigationAction {
 	}
 	if m.selectedID() == "" {
 		add("Main actions", "Manage crews (m)", "m", "Opens crew management to add, edit, recolour or delete crews and organise their members.", false)
-		add("Main actions", "Spawn agent (s)", "s", "Choose an agent type, then a new Ghostty tab (direct, without tmux) or a tmux session. Select a repository and source branch, set up a new worktree, and review the prompt before launching. Ghostty requires macOS.", false)
+		add("Main actions", "Spawn agent (s)", "s", "Choose an agent type, then a direct Ghostty tab, a tmux session, or a tmux session attached in Ghostty. Select a repository and source branch, set up a new worktree, and review the prompt before launching. Ghostty requires macOS.", false)
 		add("Main actions", "Prompt templates (f)", "f", "Lists global blueprints. View raw templates, edit them in vi or your default editor, or fill arguments and copy a generated prompt into an external agent. Spawning also offers compatible templates.", false)
 		add("Main actions", "Add existing agent (a)", "a", "Choose Claude or Codex, then select an existing session to add. Import preserves its conversation and files without restarting it.", false)
 		add("Main actions", "Open agent (o)", "o", "Choose a running agent to open. The picker includes all members, even when the main list is filtered.", false)

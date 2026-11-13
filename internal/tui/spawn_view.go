@@ -157,7 +157,7 @@ func (m Model) spawnPreviewContent() string {
 		permissions = "Blueprint / agent settings"
 	}
 	summary := []string{"Name: " + manifest.Name, "Repository: " + manifest.Repo, "Branch: " + manifest.Branch, "Agent: " + manifest.Agent, "Permissions: " + permissions, "Destination: " + spawnDestination(manifest.LaunchTarget)}
-	if manifest.LaunchTarget == "ghostty" && f.plan.GhosttyWindow != "" {
+	if f.plan.GhosttyWindow != "" {
 		label := "New window"
 		for _, w := range f.windows {
 			if w.ID == f.plan.GhosttyWindow {
@@ -188,6 +188,9 @@ func (m Model) spawnView(height int) string {
 	available := max(1, height-len(messages))
 	titles := []string{"Repository", "Source branch", "Ticket and name", "Agent", "Blueprint", "Authorization level", "Variables", "Prompt preview", "Launching", "Crew", "Launch destination", "Ghostty window"}
 	lines := []string{"Spawn · " + titles[f.step]}
+	if f.attachMember != "" {
+		lines[0] = "Open in Ghostty · " + clean(f.attachMember)
+	}
 	switch f.step {
 	case repoStep, sourceStep:
 		input := f.query

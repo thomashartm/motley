@@ -24,17 +24,44 @@ func OpenGhostty(dir, id, worktree, title, window string, resume bool) error {
 	if err != nil {
 		return err
 	}
+	args := []string{"/usr/bin/env", "MOTLEY_MEMBER=" + id, bin, "run-direct", id}
+	if resume {
+		args = append(args, "--resume")
+	}
+	terminalID, err := openGhosttyCommand(worktree, ghosttyCommand(args), title, window)
+	if err != nil {
+		return err
+	}
+	if err := state.WriteAtomic(filepath.Join(dir, id+".ghostty-terminal"), []byte(terminalID)); err != nil {
+		return fmt.Errorf("opened Ghostty; could not save its terminal ID: %w", err)
+	}
+	return nil
+}
+
+// OpenGhosttyTmux opens a client; the tmux server continues to own the agent.
+func OpenGhosttyTmux(worktree, window string, argv []string) error {
+	// tmux updates the title when this client switches members; do not pin a tab title.
+	_, err := openGhosttyCommand(worktree, ghosttyCommand(argv), "", window)
+	return err
+}
+
+func ghosttyCommand(argv []string) string {
 	command := "/usr/bin/env -u TMUX -u TMUX_PANE"
 	// Finder-launched Ghostty need not share the launching terminal's environment.
-	// Preserve agent configuration and hook/state discovery without importing tmux.
 	for _, key := range []string{"PATH", "HOME", "SHELL", "XDG_RUNTIME_DIR", "XDG_STATE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR"} {
 		if value, ok := os.LookupEnv(key); ok {
 			command += " " + shellx.Quote(key+"="+value)
 		}
 	}
-	command += " " + shellx.Quote("MOTLEY_MEMBER="+id) + " " + shellx.Quote(bin) + " run-direct " + shellx.Quote(id)
-	if resume {
-		command += " --resume"
+	for _, arg := range argv {
+		command += " " + shellx.Quote(arg)
+	}
+	return command
+}
+
+func openGhosttyCommand(worktree, command, title, window string) (string, error) {
+	if runtime.GOOS != "darwin" {
+		return "", fmt.Errorf("opening a Ghostty window requires macOS")
 	}
 	// Values travel as argv, not AppleScript source. Shell quoting keeps paths
 	// containing spaces, quotes or metacharacters literal in Ghostty's command.
@@ -58,7 +85,9 @@ func OpenGhostty(dir, id, worktree, title, window string, resume bool) error {
 			set newTab to new tab in win with configuration cfg
 		end if
 		set term to focused terminal of newTab
-		if not (perform action ("set_tab_title:" & item 3 of argv) on term) then error "Could not set Ghostty tab title"
+		if item 3 of argv is not "" then
+			if not (perform action ("set_tab_title:" & item 3 of argv) on term) then error "Could not set Ghostty tab title"
+		end if
 		focus term
 		return id of term
 	end tell
@@ -66,16 +95,13 @@ end run
 `
 	out, err := runGhostty(script, "-", worktree, command, title, window)
 	if err != nil {
-		return err
+		return "", err
 	}
 	terminalID := strings.TrimSpace(out)
 	if terminalID == "" {
-		return fmt.Errorf("opened Ghostty but received no terminal ID")
+		return "", fmt.Errorf("opened Ghostty but received no terminal ID")
 	}
-	if err := state.WriteAtomic(filepath.Join(dir, id+".ghostty-terminal"), []byte(terminalID)); err != nil {
-		return fmt.Errorf("opened Ghostty; could not save its terminal ID: %w", err)
-	}
-	return nil
+	return terminalID, nil
 }
 
 // UpdateGhostty addresses only the terminal recorded at launch, never a title

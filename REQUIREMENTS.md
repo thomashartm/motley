@@ -43,8 +43,9 @@ a static Go executable per supported OS/architecture, without cgo, available
 as both `motley` and `mtly`.
 
 The main-menu **Spawn agent** flow asks for agent type, then destination:
-**New Ghostty tab** on macOS (direct agent, no tmux) or **tmux session**.
-Both create a new worktree after repository, source and authorization selection.
+**New Ghostty tab** on macOS (direct agent, no tmux), **tmux session**, or
+**tmux session in Ghostty** on macOS (attached tmux client).
+All create a new worktree after repository, source and authorization selection.
 
 ## 0. Principles and non-goals
 
@@ -55,13 +56,15 @@ Both create a new worktree after repository, source and authorization selection.
 - No automatic GitHub synchronization. `gh` runs only on explicit user action,
   plus an optional lookup at spawn.
 - Repository operations go through git; GitHub operations through gh. The
-  **New Ghostty tab** destination (including Revive) is the sole AppleScript
-  integration (approved 2026-10-19): list Ghostty windows and preview a selected
-  window by bringing it forward.
+  Ghostty destinations (including direct-agent Revive and attaching running
+  tmux members, requested 2026-11-13) are the sole AppleScript integration:
+  list Ghostty windows and preview a selected window by bringing it forward.
   Create a tab in the selected window (default: current), or a new window,
-  running the agent directly in its worktree.
-  Record its terminal ID to focus that exact terminal and update its tab title
-  to the member name prefixed by the agent/crew colour marker. Do not match
+  running the agent directly in its worktree or attaching a new client to its
+  existing tmux session. A tmux window uses the same server/socket, leaves other
+  clients attached and preserves the agent when the window closes.
+  For direct agents, record the terminal ID to focus that exact terminal and
+  update its tab title to the member name prefixed by the agent/crew colour marker. Do not match
   terminals by title or directory, send input, or control imported agent processes.
 - Hooks must never slow down or break an agent. `motley report` returns fast and
   always exits 0.

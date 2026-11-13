@@ -40,6 +40,7 @@ const (
 )
 
 type spawnForm struct {
+	attachMember        string
 	previewAction       int
 	step, choice, field int
 	repos               []string
@@ -84,15 +85,16 @@ type issueLooked struct {
 	err   error
 }
 type spawnFinished struct {
-	manifest member.Manifest
-	err      error
+	manifest  member.Manifest
+	windowErr error
+	err       error
 }
 
 func spawnPreviewActions() []string { return []string{"Launch", "Edit prompt", "Cancel"} }
 
 func spawnDestinations() []string {
 	if runtime.GOOS == "darwin" {
-		return []string{"New Ghostty tab", "tmux session"}
+		return []string{"New Ghostty tab", "tmux session", "tmux session in Ghostty"}
 	}
 	return []string{"tmux session"}
 }
@@ -321,7 +323,9 @@ func (m Model) spawnMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.message = "Created " + msg.manifest.ID
 		if msg.err != nil {
 			m.message += "; " + msg.err.Error()
-		} else if directGhostty {
+		} else if msg.windowErr != nil {
+			m.message += "; tmux is running, but Ghostty could not open: " + msg.windowErr.Error() + ". Retry with Open in Ghostty (w)."
+		} else if directGhostty || f.opts.GhosttyWindow != "" {
 			m.message += " in a new Ghostty tab"
 		}
 		return m, m.requestDetail(true)
@@ -434,7 +438,11 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 				plan, send := f.plan, m.sendMsg
 				return m, func() tea.Msg {
 					created, err := member.SpawnPrepared(plan, progressWriter{send})
-					return spawnFinished{manifest: created, err: err}
+					result := spawnFinished{manifest: created, err: err}
+					if err == nil && created.LaunchTarget != "ghostty" && plan.GhosttyWindow != "" {
+						result.windowErr = member.OpenTmuxWindow(created.ID, plan.GhosttyWindow)
+					}
+					return result
 				}
 			case "e":
 				return m, m.editPrompt()
@@ -519,6 +527,11 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 						f.opts.GhosttyWindow = f.windows[f.choice].ID
 					}
 					f.err = ""
+					if f.attachMember != "" {
+						id, window := f.attachMember, f.opts.GhosttyWindow
+						m.busy, m.busyText = true, "Opening tmux in Ghostty…"
+						return m, func() tea.Msg { return tmuxWindowOpened{member.OpenTmuxWindow(id, window)} }
+					}
 					return m.loadSpawnRepos()
 				}
 				if f.step == crewStep {
@@ -550,6 +563,9 @@ func (m Model) updateSpawn(msg tea.Msg) (tea.Model, tea.Cmd) {
 					f.opts.LaunchTarget = "tmux"
 					if runtime.GOOS == "darwin" && f.choice == 0 {
 						f.opts.LaunchTarget = "ghostty"
+						return m.loadGhosttyWindows()
+					}
+					if runtime.GOOS == "darwin" && f.choice == 2 {
 						return m.loadGhosttyWindows()
 					}
 					return m.loadSpawnRepos()
@@ -728,4 +744,20 @@ func (m Model) previewContext() string {
 		parts = append(parts, "crew "+c.Title)
 	}
 	return strings.Join(parts, " · ")
+}
+
+type tmuxWindowOpened struct{ err error }
+
+func (m Model) beginTmuxWindow() (tea.Model, tea.Cmd) {
+	if runtime.GOOS != "darwin" {
+		m.message = "Opening a Ghostty window requires macOS"
+		return m, nil
+	}
+	r := m.selectedRow()
+	if m.selectedID() == "" || !r.Alive || r.External {
+		m.message = "Select a running tmux member first."
+		return m, nil
+	}
+	m.spawn = &spawnForm{attachMember: r.ID, step: windowStep}
+	return m.loadGhosttyWindows()
 }

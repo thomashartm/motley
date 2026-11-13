@@ -53,17 +53,19 @@ Rerun the installer to update from `main`, then reopen Motley.
 1. Put your repository under `~/projects`, or [configure your repository directories](#configuration).
 2. Run `mtly`, press **Home**, and select **Spawn agent (s)** from the main menu.
    The **s** shortcut opens the same flow.
-3. Choose **Claude**, **Codex** or **OpenCode**, then **New Ghostty tab** or
-   **tmux session**. Ghostty runs the agent directly, without tmux (macOS only).
+3. Choose **Claude**, **Codex** or **OpenCode**, then **New Ghostty tab**,
+   **tmux session**, or **tmux session in Ghostty** (Ghostty requires macOS).
+   **New Ghostty tab** runs the agent directly; **tmux session in Ghostty**
+   keeps it running in tmux and attaches a visible terminal to it.
    For Ghostty, choose an existing window (the current one is selected first),
    or **New window**. Press **p** to bring the highlighted window to the front;
    return to Motley to confirm your choice. **r** refreshes the window list.
 4. Choose the repository and source branch, then name the task and its new branch.
    Choose a prompt template and authorization level, and review the preview.
-5. Select **Launch**. Both destinations create a **new worktree**. Ghostty opens
-   the agent there in a new tab; for tmux, select the member and press **Enter**.
+5. Select **Launch**. All destinations create a **new worktree**. Ghostty opens
+   a tab in the chosen window; for plain tmux, select the member and press **Enter**.
 
-Ghostty tab titles follow the member name, prefixed by its colour marker, such
+Direct Ghostty tab titles follow the member name, prefixed by its colour marker, such
 as **🔵 Payments agent**. Editing the member or its crew updates the title; a
 member colour overrides its crew colour. **Open agent** focuses the recorded
 tab. Sessions launched before tab tracking was added acquire this support
@@ -71,6 +73,17 @@ after they stop and you use **Revive**.
 
 **Launching creates a worktree and pushes a new branch.** The repository needs an
 `origin` remote and a local `main` or `master` branch.
+
+### Show a running tmux agent in a window
+
+Select the member and choose **Open in Ghostty (w)**. Choose **New window** to
+keep it visible beside Motley, or select an existing window to add a tab there.
+This attaches the same running tmux session; closing the window leaves the agent
+running. Use **Send to work tab (t)** to display another member in that attached
+tab. tmux updates its title when you switch members or edit their names.
+
+If opening Ghostty fails after spawning, the tmux agent remains available;
+retry **Open in Ghostty (w)** without spawning again.
 
 ### Add a running agent
 
