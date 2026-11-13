@@ -107,6 +107,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.importMessage(msg)
 	case spawnLoaded, spawnSourcesLoaded, spawnWindowsLoaded, spawnWindowPreviewed, spawnPrepared, spawnProgress, spawnFinished, promptEdited, issueLooked:
 		return m.spawnMessage(msg)
+	case tmuxWindowOpened:
+		m.busy, m.busyText = false, ""
+		if msg.err != nil {
+			if m.spawn != nil {
+				m.spawn.err = msg.err.Error()
+			}
+			return m, nil
+		}
+		m.spawn = nil
+		m.message = "Attached in Ghostty; closing the window leaves the tmux agent running."
+		return m, m.poll
 	case tick:
 		return m, m.poll
 	case githubDone:
@@ -374,6 +385,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.beginTrackSession(true)
 		case "i":
 			return m.beginReply()
+		case "w":
+			return m.beginTmuxWindow()
 		case "t":
 			return m.beginSend()
 		case "/":

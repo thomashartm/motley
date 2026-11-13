@@ -3,11 +3,13 @@ package member
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/thomashartm/motley/internal/crew"
 	"github.com/thomashartm/motley/internal/state"
 	"github.com/thomashartm/motley/internal/terminal"
+	"github.com/thomashartm/motley/internal/tmux"
 )
 
 func requireDirectStopped(m Manifest) error {
@@ -82,4 +84,27 @@ func focusGhostty(dir string, m Manifest) error {
 		return err
 	}
 	return terminal.UpdateGhostty(dir, m.ID, ghosttyTitle(m, crews), true)
+}
+
+// OpenTmuxWindow attaches another client without restarting or moving the agent.
+func OpenTmuxWindow(id, window string) error {
+	if runtime.GOOS != "darwin" {
+		return fmt.Errorf("opening a Ghostty window requires macOS")
+	}
+	dir, err := state.MembersDir()
+	if err != nil {
+		return err
+	}
+	m, err := Load(dir, id)
+	if err != nil {
+		return err
+	}
+	if m.LaunchTarget == "ghostty" {
+		return fmt.Errorf("%s runs directly in Ghostty, not tmux", id)
+	}
+	argv, err := tmux.AttachArgv(id)
+	if err != nil {
+		return err
+	}
+	return terminal.OpenGhosttyTmux(m.Worktree, window, argv)
 }

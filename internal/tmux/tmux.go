@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -194,6 +195,31 @@ func Attach(id string) error {
 		return err
 	}
 	return syscall.Exec(bin, []string{"tmux", "attach-session", "-t", "=" + SessionName(id)}, os.Environ())
+}
+
+// AttachArgv pins a new terminal client to the current server and exact member.
+func AttachArgv(id string) ([]string, error) {
+	target := "=" + SessionName(id)
+	out, err := run("display-message", "-p", "-t", target+":", "#{socket_path}\n#{@motley_member}")
+	if err != nil {
+		return nil, err
+	}
+	socket, owner, ok := strings.Cut(strings.TrimSuffix(out, "\n"), "\n")
+	if !ok || socket == "" || owner != id {
+		return nil, fmt.Errorf("no running tmux session owned by member %s", id)
+	}
+	bin, err := exec.LookPath("tmux")
+	if err != nil {
+		return nil, err
+	}
+	bin, err = filepath.Abs(bin)
+	if err != nil {
+		return nil, err
+	}
+	if err := showShortcuts(id); err != nil {
+		return nil, err
+	}
+	return []string{bin, "-S", socket, "attach-session", "-t", target}, nil
 }
 
 const MonitorSession = "_motley"

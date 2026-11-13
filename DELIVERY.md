@@ -1,5 +1,47 @@
 # Delivery checkpoints
 
+## tmux sessions in Ghostty windows — 2026-11-13
+
+Implemented on `feature/tmux-ghostty-window` in
+`/Users/thomas/.codex/worktrees/aead/motley`. The spawn destination
+**tmux session in Ghostty** and running-member **Open in Ghostty (w)** reuse
+window selection, preview and refresh. Choose a new window or a tab in an
+existing window. CLI: `spawn` and `attach` accept `--ghostty-window new|id`.
+The attached tab also works with the existing **Send to work tab (t)** action.
+
+The client uses the exact tmux socket and verifies session ownership. It leaves
+other clients attached, does not restart the agent, and follows tmux titles when
+switching members. Window creation failure preserves the spawned session and
+reports how to retry. Existing-member window errors keep the picker open.
+No new dependency, manifest field, agent-process migration, or installed-binary
+replacement. Usage and the Ghostty integration policy are updated.
+
+Validation:
+
+- Baseline tmux, terminal, member and TUI package tests passed.
+- New UI and real tmux/PTY lifecycle regressions passed, including custom
+  socket attachment, existing-window selection, stable agent PID, recovery,
+  foreign ownership and stopped sessions. Internal package tests passed.
+- Real Ghostty desktop smoke passed: new window, second tab in that window,
+  two attached clients, dynamic titles when switching sessions, and surviving
+  agent processes after window close. Existing windows were preserved.
+- Go vet, golangci-lint v2.14.0 (0 issues), native build and Darwin/Linux
+  amd64/arm64 builds passed. Independent review found no substantive issues.
+- Full `make test` completed: installer, all 10 uninstaller tests, OpenCode,
+  all internal packages and all existing CLI tests passed. Its sole failure was
+  `TestTmuxGhosttyWindowLifecycle`, compiled before the test's pane query was
+  corrected from `=session` to `=session:` (the former returns an empty format).
+  The corrected tmux/Ghostty lifecycle tests passed in focused runs. The full
+  suite was not repeated after this test-only correction.
+- Aikido scanned all 11 changed Go files, skipping none. Findings were unchanged
+  paths: validated member ID used for `.ghostty-terminal`, tmux calls using argv
+  without a shell, and the explicitly user-controlled `EDITOR` command with the
+  prompt path passed as a positional parameter. No new unresolved finding.
+
+PR publication requested on 2026-11-13. The corrected tmux/Ghostty lifecycle
+tests passed again before publication; the branch matches the current `main`
+base. Installed binaries are unchanged. Hosted CI results are tracked on the PR.
+
 ## Codex follows active worktree conversations — 2026-11-02
 
 Implemented on `fix/codex-session-tracking`. Imported Codex members follow the

@@ -184,3 +184,74 @@ func TestSpawnWindowPreviewRetainsSelection(t *testing.T) {
 		t.Fatal("new window must not be created by preview")
 	}
 }
+
+func TestSpawnTmuxInGhosttyKeepsTmuxLifecycle(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Ghostty requires macOS")
+	}
+	m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = update(m, key("s"))
+	m = arrow(m, tea.KeyEnter)
+	m = arrow(m, tea.KeyDown)
+	m = arrow(m, tea.KeyDown)
+	m = arrow(m, tea.KeyEnter)
+	if m.spawn.step != windowStep || m.spawn.opts.LaunchTarget != "tmux" {
+		t.Fatal("tmux window destination did not open window picker")
+	}
+	m = update(m, spawnWindowsLoaded{windows: []terminal.GhosttyWindow{{ID: "existing", Name: "Work"}}})
+	m = arrow(m, tea.KeyEnter)
+	if m.spawn.opts.GhosttyWindow != "existing" || m.spawn.step != repoStep {
+		t.Fatal("window choice lost before worktree setup")
+	}
+}
+
+func TestExistingTmuxGhosttyPickerCancel(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Ghostty requires macOS")
+	}
+	m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = update(m, snapshot{rows: []member.Row{{Manifest: member.Manifest{ID: "live", Name: "Live"}, Alive: true}}})
+	m = update(m, key("w"))
+	if m.spawn == nil || m.spawn.step != windowStep {
+		t.Fatal("running member has no window picker")
+	}
+	m = update(m, spawnWindowsLoaded{windows: []terminal.GhosttyWindow{{ID: "work"}}})
+	if !strings.Contains(m.View(), "Open in Ghostty") {
+		t.Fatal(m.View())
+	}
+	m = arrow(m, tea.KeyEsc)
+	if m.spawn != nil || len(m.allRows) != 1 || !m.allRows[0].Alive {
+		t.Fatal("cancel changed running member")
+	}
+}
+
+func TestTmuxGhosttyFailureKeepsRunningMember(t *testing.T) {
+	m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
+	m.spawn = &spawnForm{step: launchStep}
+	m = update(m, spawnFinished{manifest: member.Manifest{ID: "live", LaunchTarget: "tmux"}, windowErr: errors.New("window disappeared")})
+	if m.spawn != nil || len(m.allRows) != 1 || !m.allRows[0].Alive || m.allRows[0].External || !strings.Contains(m.message, "Open in Ghostty") {
+		t.Fatal("window failure lost running tmux member", m.message)
+	}
+}
+
+func TestTmuxGhosttyPickerFailureAllowsRetry(t *testing.T) {
+	m := update(newModel(false, true, "", nil), tea.WindowSizeMsg{Width: 60, Height: 10})
+	m.spawn = &spawnForm{step: windowStep, attachMember: "live", windows: []terminal.GhosttyWindow{{ID: "work"}}}
+	m = arrow(m, tea.KeyEnter)
+	if !m.busy || m.spawn.step != windowStep {
+		t.Fatal("open created spawn flow")
+	}
+	m = update(m, tmuxWindowOpened{err: errors.New("window disappeared")})
+	if m.busy || m.spawn == nil || !strings.Contains(m.View(), "window disappeared") {
+		t.Fatal("failure cannot be retried", m.View())
+	}
+	m = arrow(m, tea.KeyDown)
+	m = arrow(m, tea.KeyEnter)
+	if !m.busy || m.spawn.opts.GhosttyWindow != "new" {
+		t.Fatal("cannot retry in a new window")
+	}
+	m = update(m, tmuxWindowOpened{})
+	if m.busy || m.spawn != nil || !strings.Contains(m.message, "Attached") {
+		t.Fatal("successful retry did not close picker")
+	}
+}

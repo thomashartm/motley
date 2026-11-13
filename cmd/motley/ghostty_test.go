@@ -445,3 +445,79 @@ end run`, win)
 	}
 	eventually(t, func() bool { alive, _ := terminal.Alive(dir, id); return !alive })
 }
+
+func TestTmuxGhosttyWindowLifecycle(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	if runtime.GOOS != "darwin" {
+		t.Skip("Ghostty requires macOS")
+	}
+	bin := buildLifecycleBinary(t)
+	f := newMemberFixture(t, bin, "main")
+	// Capture the OS launch; run its real command in a PTY against the isolated tmux server.
+	writeFixture(t, filepath.Join(f.home, "fake agents/osascript"), `#!/bin/sh
+cat >/dev/null
+printf '%s' "$3" > "$HOME/window-command"
+printf '%s' "$5" > "$HOME/tab-window"
+printf 'fixture-terminal\n'
+`, 0755)
+	writeFixture(t, filepath.Join(f.home, "fake agents/claude"), "#!/bin/sh\nprintf 'AGENT_READY\\n'\nwhile IFS= read -r line; do echo \"$line\"; done\n", 0755)
+	id := "feature-tmux-window"
+	f.motley("spawn", "--repo", "api", "--branch", "feature/tmux-window", "--no-gh", "--ghostty-window", "new")
+	if f.manifest(id).LaunchTarget != "tmux" {
+		t.Fatal("window changed lifecycle")
+	}
+	pid := f.tmux("display-message", "-p", "-t", "="+id+":", "#{pane_pid}")
+	command := windowCommand(t, f)
+	client := startTerminal(t, exec.Command("/bin/sh", "-c", command))
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Log("client output:", client.text())
+		}
+	})
+	eventually(t, func() bool { return strings.Contains(client.text(), "AGENT_READY") })
+	f.tmux("detach-client", "-s", "="+id)
+	eventually(t, func() bool { return f.tmux("display-message", "-p", "-t", "="+id+":", "#{session_attached}") == "0" })
+	f.motley("attach", id, "--ghostty-window", "existing-window")
+	target, _ := os.ReadFile(filepath.Join(f.home, "tab-window"))
+	if string(target) != "existing-window" {
+		t.Fatal("lost chosen window", string(target))
+	}
+	second := startTerminal(t, exec.Command("/bin/sh", "-c", windowCommand(t, f)))
+	eventually(t, func() bool { return strings.Contains(second.text(), "AGENT_READY") })
+	if got := f.tmux("display-message", "-p", "-t", "="+id+":", "#{pane_pid}"); got != pid {
+		t.Fatal("agent restarted", pid, got)
+	}
+	// A failed OS launch leaves the tmux agent available for retry.
+	writeFixture(t, filepath.Join(f.home, "fake agents/osascript"), "#!/bin/sh\ncat >/dev/null\necho 'window closed' >&2\nexit 1\n", 0755)
+	out, err := exec.Command(bin, "attach", id, "--ghostty-window", "missing-window").CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "window closed") {
+		t.Fatalf("failure hidden: %s %v", out, err)
+	}
+	if got := f.tmux("display-message", "-p", "-t", "="+id+":", "#{pane_pid}"); got != pid {
+		t.Fatal("failed open changed agent")
+	}
+}
+
+func TestTmuxGhosttySpawnFailureKeepsAgent(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Ghostty requires macOS")
+	}
+	bin := buildLifecycleBinary(t)
+	f := newMemberFixture(t, bin, "main")
+	writeFixture(t, filepath.Join(f.home, "fake agents/osascript"), "#!/bin/sh\ncat >/dev/null\necho 'Automation permission denied' >&2\nexit 1\n", 0755)
+	out, err := exec.Command(bin, "spawn", "--repo", "api", "--branch", "feature/window-failure", "--no-gh", "--ghostty-window", "new").CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "retry with motley attach") {
+		t.Fatalf("missing recovery: %s %v", out, err)
+	}
+	assertListState(t, f.motley("ls"), "feature-window-failure", "alive")
+	f.tmux("set-option", "-t", "=feature-window-failure:", "@motley_member", "another-owner")
+	out, err = exec.Command(bin, "attach", "feature-window-failure", "--ghostty-window", "new").CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "owned by member") {
+		t.Fatalf("attached foreign session: %s %v", out, err)
+	}
+	f.tmux("kill-session", "-t", "=feature-window-failure")
+	out, err = exec.Command(bin, "attach", "feature-window-failure", "--ghostty-window", "new").CombinedOutput()
+	if err == nil || strings.Contains(string(out), "Automation permission denied") {
+		t.Fatalf("attempted window for dead session: %s %v", out, err)
+	}
+}

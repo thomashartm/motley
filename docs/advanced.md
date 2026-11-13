@@ -17,7 +17,8 @@ Use the member ID printed by `spawn` or listed by `ls`.
 | `--repo api` | Select `api` directly under any configured `repos_roots` entrypoint. |
 | `--agent claude\|codex\|opencode` | Choose an agent; Claude is the default without a blueprint. |
 | `--terminal ghostty\|tmux` | Open a direct Ghostty window on macOS, or use tmux (CLI default). Both create a new worktree. |
-| `--detach` | Launch a tmux session without attaching. |
+| `--ghostty-window <id-or-new>` | Attach the spawned tmux session in Ghostty, or choose the window for a direct Ghostty agent (macOS). |
+| `--detach` | Leave the current terminal in place; an explicit `--ghostty-window` still opens its window. |
 | `--crew <crew-id>` | Assign the member to a crew. |
 | `--blueprint <name>` | Start with a saved prompt template. |
 | `--no-gh` | Skip the GitHub issue lookup. |
@@ -35,17 +36,32 @@ Local selections include unpushed commits; remote selections fetch that branch
 before creating the worktree. The preview shows the chosen source.
 
 In the main menu (**Home**), choose **Spawn agent (s)**. Select the agent type
-first, then the launch destination: **New Ghostty window** or **tmux session**.
+first, then the launch destination: **New Ghostty tab**, **tmux session**, or
+**tmux session in Ghostty**.
 Continue through repository, source branch, task, template and authorization
 selection. The preview names the destination; **Launch** creates a new worktree
 and starts the selected agent there. The overview stays open.
 
-**New Ghostty window** runs the agent directly, without tmux. It requires macOS
+**New Ghostty tab** runs the agent directly, without tmux. It requires macOS
 and Ghostty 1.3 or later with AppleScript enabled; macOS may request Automation
 access. The CLI equivalent is `mtly spawn --terminal ghostty` with the usual
 repository, branch and agent options. A failed window launch preserves the
 created worktree and member; fix the reported problem and run
 `mtly revive <member-id>` to retry in that same worktree.
+
+For tmux, open a separate window at spawn or attach an existing running member:
+
+```sh
+mtly spawn --repo api --branch feature/412-fx-cache --terminal tmux --ghostty-window new
+mtly attach <member-id> --ghostty-window new
+```
+
+Replace `new` with a Ghostty window ID to add a tab there. The TUI's
+**Open in Ghostty (w)** action provides a window picker with preview and refresh.
+The current Motley terminal stays in place, and closing the new window does not
+stop the tmux agent. A window error preserves the session; retry `attach` instead
+of spawning or reviving. The client uses the same tmux server, including custom
+sockets. **Send to work tab (t)** can switch another member into that tab.
 
 Direct agents appear with **GHO** access in the overview and report status through
 agent hooks. Use their original Ghostty window for interaction. Stop the agent
