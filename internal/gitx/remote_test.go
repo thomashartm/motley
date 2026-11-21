@@ -7,7 +7,7 @@ func TestWebURL(t *testing.T) {
 		remote, web string
 		ok          bool
 	}{
-		{"git@github.com:AderisERP/aderis-api.git", "https://github.com/AderisERP/aderis-api", true},
+		{"git@github.com:ExampleOrg/sample-api.git", "https://github.com/ExampleOrg/sample-api", true},
 		{"git@github.com:o/r", "https://github.com/o/r", true},
 		{"https://github.com/o/r.git", "https://github.com/o/r", true},
 		{"https://GitHub.com/o/r/", "https://github.com/o/r", true},

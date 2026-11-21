@@ -1,4 +1,4 @@
 schema = 1
-repos_roots = ["~/projects", "~/projects/aderis"]
+repos_roots = ["~/projects"]
 worktrees_root = "~/worktrees"
 monitor_bell = false

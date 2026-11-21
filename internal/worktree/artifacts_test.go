@@ -5,16 +5,13 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
 
-// Compare an explicit inventory and native attributes against both a golden
-// file and the unchanged artifact-copy function extracted from reference/wt.
-func TestArtifactCopyParity(t *testing.T) {
+func TestArtifactCopyInventoryAndAttributes(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "source with spaces")
 	mtime := time.Unix(1700000000, 0)
 	write := func(root, rel, value string, mode fs.FileMode) {
@@ -24,6 +21,9 @@ func TestArtifactCopyParity(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(path, []byte(value), mode); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, mode); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Chtimes(path, mtime, mtime); err != nil {
@@ -52,11 +52,9 @@ func TestArtifactCopyParity(t *testing.T) {
 	if err := os.Symlink(".env.local", filepath.Join(source, "nested/.env.link")); err != nil {
 		t.Fatal(err)
 	}
-	target, reference := t.TempDir(), t.TempDir()
-	for _, root := range []string{target, reference} {
-		write(root, ".env", "keep", 0o600)
-		write(root, "existing/graphify-out/old", "keep artifact", 0o600)
-	}
+	target := t.TempDir()
+	write(target, ".env", "keep", 0o600)
+	write(target, "existing/graphify-out/old", "keep artifact", 0o600)
 	var progress bytes.Buffer
 	if err := CopyArtifacts(source, target, &progress); err != nil {
 		t.Fatal(err)
@@ -71,25 +69,6 @@ func TestArtifactCopyParity(t *testing.T) {
 	if !strings.Contains(progress.String(), "Copied 5 local artifact(s)") {
 		t.Fatalf("unexpected progress: %s", progress.String())
 	}
-	script, err := os.ReadFile("../../reference/wt")
-	if err != nil {
-		t.Fatal(err)
-	}
-	start := strings.Index(string(script), "copy_local_artifacts() {")
-	if start < 0 {
-		t.Fatal("reference copy function not found")
-	}
-	end := strings.Index(string(script[start:]), "\n}\n")
-	if end < 0 {
-		t.Fatal("reference copy function end not found")
-	}
-	body := "set -eu\nCFG_ENV_GLOBS=( '.env' '.env.*' )\nCFG_ARTIFACT_DIRS=( 'graphify-out' )\nCYAN='' NC=''\nprint_info() { :; }\nprint_success() { :; }\n" + string(script[start:start+end+3]) + "\ncopy_local_artifacts \"$1\" \"$2\"\n"
-	if out, err := exec.Command("bash", "-c", body, "artifact-parity", source, reference).CombinedOutput(); err != nil {
-		t.Fatalf("reference: %v\n%s", err, out)
-	}
-	if got := inventory(t, reference); got != string(want) {
-		t.Fatalf("reference differs from golden:\n%s", got)
-	}
 	if err := filepath.WalkDir(target, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -101,16 +80,19 @@ func TestArtifactCopyParity(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		actual, err := os.Stat(path)
+		info, err := entry.Info()
 		if err != nil {
 			return err
 		}
-		original, err := os.Stat(filepath.Join(reference, rel))
-		if err != nil {
-			return err
+		wantMode := fs.FileMode(0o640)
+		switch rel {
+		case ".env", "existing/graphify-out/old":
+			wantMode = 0o600
+		case "nested/.env.production":
+			wantMode = 0o750
 		}
-		if actual.Mode() != original.Mode() || !actual.ModTime().Equal(original.ModTime()) {
-			t.Errorf("attributes differ from reference for %s", rel)
+		if info.Mode().Perm() != wantMode || !info.ModTime().Equal(mtime) {
+			t.Errorf("%s: got mode %v and mtime %v, want %v and %v", rel, info.Mode().Perm(), info.ModTime(), wantMode, mtime)
 		}
 		return nil
 	}); err != nil {

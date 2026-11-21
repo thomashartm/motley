@@ -13,9 +13,9 @@ import (
 func importCardModel() Model {
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
 	m.importing = &importDialog{agent: "codex", sessions: []member.ImportCandidate{
-		{SessionID: "019b1234-aaaa-bbbb-cccc-123456789abc", Name: "Fix reverse-charge VAT rollback", Cwd: "/Users/thomas/projects/aderis/backend-fix-2956", Status: "working"},
-		{SessionID: "019b1234-aaaa-bbbb-cccc-123456789def", Name: "Fix reverse-charge VAT rollback", Cwd: "/Users/thomas/projects/aderis/backend-fix-2956", Status: "permission"},
-		{SessionID: "019b5678-aaaa-bbbb-cccc-123456780123", Name: "Polish Motley session picker", Cwd: "/Users/thomas/projects/motley-feature-bugfixes", Status: "idle"},
+		{SessionID: "019b1234-aaaa-bbbb-cccc-123456789abc", Name: "Fix reverse-charge VAT rollback", Cwd: "/Users/dev/projects/shared/backend-fix-2956", Status: "working"},
+		{SessionID: "019b1234-aaaa-bbbb-cccc-123456789def", Name: "Fix reverse-charge VAT rollback", Cwd: "/Users/dev/projects/shared/backend-fix-2956", Status: "permission"},
+		{SessionID: "019b5678-aaaa-bbbb-cccc-123456780123", Name: "Polish Motley session picker", Cwd: "/Users/dev/projects/motley-feature-bugfixes", Status: "idle"},
 	}}
 	return m
 }

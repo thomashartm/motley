@@ -225,7 +225,7 @@ Motley creates `~/.motley/config.toml` on first launch. Edit the roots to suit y
 
 ```toml
 schema = 1
-repos_roots = ["~/projects", "~/projects/aderis"]
+repos_roots = ["~/projects"]
 worktrees_root = "~/worktrees"
 monitor_bell = false
 ```
@@ -264,5 +264,4 @@ Tests use temporary repositories, fake agents and isolated tmux servers.
 
 - [Advanced usage](docs/advanced.md): CLI examples, crews, blueprints, GitHub and terminal setup.
 - [Troubleshooting](docs/troubleshooting.md): status sync, missing sessions, hooks and clipboard.
-- [Delivery notes](https://github.com/thomashartm/motley/blob/main/DELIVERY.md)
 - [MIT license](LICENSE)

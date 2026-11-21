@@ -210,7 +210,7 @@ func TestTerminatePanelChoices(t *testing.T) {
 }
 
 func TestRetireLayoutWithLongCheckout(t *testing.T) {
-	path := "/Users/thomas/projects/aderis/infrastructure-stacks-feature-125-async-batching-infrastructure"
+	path := "/Users/dev/projects/shared/infrastructure-stacks-feature-125-async-batching-infrastructure"
 	for _, size := range [][2]int{{60, 10}, {100, 25}, {200, 35}} {
 		for _, imported := range []bool{false, true} {
 			m := actionModel(size[0], size[1])
