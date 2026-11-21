@@ -80,8 +80,8 @@ func TestMultipleRepositoryRoots(t *testing.T) {
 		want          []string
 		wantErr       bool
 	}{
-		{name: "multiple", content: `repos_roots = ["~/projects", "~/projects/aderis"]`, want: []string{"~/projects", "~/projects/aderis"}},
-		{name: "deduplicate", content: `repos_roots = ["~/projects", "~/projects/", "~/projects/aderis"]`, want: []string{"~/projects", "~/projects/aderis"}},
+		{name: "multiple", content: `repos_roots = ["~/projects", "~/projects/shared"]`, want: []string{"~/projects", "~/projects/shared"}},
+		{name: "deduplicate", content: `repos_roots = ["~/projects", "~/projects/", "~/projects/shared"]`, want: []string{"~/projects", "~/projects/shared"}},
 		{name: "plural takes precedence", content: "repos_root = '/legacy'\nrepos_roots = ['/one', '/two']", want: []string{"/one", "/two"}},
 		{name: "empty list", content: `repos_roots = []`, wantErr: true},
 		{name: "blank entry", content: `repos_roots = ["/one", " "]`, wantErr: true},

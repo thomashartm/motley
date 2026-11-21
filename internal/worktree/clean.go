@@ -90,8 +90,8 @@ func Physical(path string) (string, error) {
 	return resolved, err
 }
 
-// CleanOne ports wt-clean's double-force removal, fallback, unlock, prune and
-// verification. Local protected branches and all remote branches are retained.
+// CleanOne removes a linked worktree and verifies its removal. Local protected
+// branches and all remote branches are retained.
 func CleanOne(repo, path, branch string, keepBranch bool) error {
 	path, err := Physical(path)
 	if err != nil {

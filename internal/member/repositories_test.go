@@ -12,7 +12,7 @@ import (
 func TestRepositoryEntrypoints(t *testing.T) {
 	root := t.TempDir()
 	projects := filepath.Join(root, "projects")
-	aderis := filepath.Join(projects, "aderis")
+	shared := filepath.Join(projects, "shared")
 	git := func(path string, args ...string) {
 		t.Helper()
 		out, err := exec.Command("git", append([]string{"-C", path}, args...)...).CombinedOutput()
@@ -28,11 +28,11 @@ func TestRepositoryEntrypoints(t *testing.T) {
 		git(path, "init", "-b", "main")
 	}
 	init(filepath.Join(projects, "motley"))
-	init(filepath.Join(aderis, "backend"))
-	init(filepath.Join(aderis, "nested", "hidden"))
-	roots := []string{projects, aderis}
+	init(filepath.Join(shared, "backend"))
+	init(filepath.Join(shared, "nested", "hidden"))
+	roots := []string{projects, shared}
 	got, err := DiscoverRepos(roots)
-	if err != nil || !reflect.DeepEqual(got, []string{filepath.Join(projects, "motley"), filepath.Join(aderis, "backend")}) {
+	if err != nil || !reflect.DeepEqual(got, []string{filepath.Join(projects, "motley"), filepath.Join(shared, "backend")}) {
 		t.Fatal(got, err)
 	}
 	for _, name := range got {
@@ -41,18 +41,18 @@ func TestRepositoryEntrypoints(t *testing.T) {
 			t.Fatal(path, err)
 		}
 	}
-	for _, name := range []string{"hidden", "nested/hidden", "../motley", filepath.Join(aderis, "nested", "hidden")} {
+	for _, name := range []string{"hidden", "nested/hidden", "../motley", filepath.Join(shared, "nested", "hidden")} {
 		if _, err := ResolveRepo(roots, name); err == nil {
 			t.Fatal("accepted non-entrypoint repository", name)
 		}
 	}
 	// Duplicate names require an explicit, directly contained path.
 	first := filepath.Join(projects, "api")
-	second := filepath.Join(aderis, "api")
+	second := filepath.Join(shared, "api")
 	init(first)
 	init(second)
 	got, err = DiscoverRepos(roots)
-	want := []string{first, filepath.Join(projects, "motley"), second, filepath.Join(aderis, "backend")}
+	want := []string{first, filepath.Join(projects, "motley"), second, filepath.Join(shared, "backend")}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatal(got, err)
 	}
@@ -70,19 +70,19 @@ func TestRepositoryEntrypoints(t *testing.T) {
 	}
 	// Repeated or symlinked roots must not duplicate a physical repository.
 	alias := filepath.Join(root, "alias")
-	if err := os.Symlink(aderis, alias); err != nil {
+	if err := os.Symlink(shared, alias); err != nil {
 		t.Fatal(err)
 	}
-	got, err = DiscoverRepos(append(roots, aderis, alias))
+	got, err = DiscoverRepos(append(roots, shared, alias))
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatal(got, err)
 	}
-	if _, err := ResolveRepo([]string{aderis, alias}, "api"); err != nil {
+	if _, err := ResolveRepo([]string{shared, alias}, "api"); err != nil {
 		t.Fatal(err)
 	}
 	// An alias with a conflicting name must not make another repository's
 	// short selector ambiguous after physical-path deduplication.
-	if err := os.Symlink(filepath.Join(aderis, "backend"), filepath.Join(aderis, "motley")); err != nil {
+	if err := os.Symlink(filepath.Join(shared, "backend"), filepath.Join(shared, "motley")); err != nil {
 		t.Fatal(err)
 	}
 	got, err = DiscoverRepos(roots)
@@ -96,11 +96,11 @@ func TestRepositoryEntrypoints(t *testing.T) {
 	}
 	// Existing linked worktrees cannot be used as main repositories.
 	git(second, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-m", "initial")
-	git(second, "worktree", "add", "-b", "linked", filepath.Join(aderis, "linked"))
+	git(second, "worktree", "add", "-b", "linked", filepath.Join(shared, "linked"))
 	if _, err := ResolveRepo(roots, "linked"); err == nil || !strings.Contains(err.Error(), "linked worktree") {
 		t.Fatal(err)
 	}
-	if _, err := DiscoverRepos([]string{filepath.Join(root, "missing"), aderis}); err == nil || !strings.Contains(err.Error(), "read repository root") {
+	if _, err := DiscoverRepos([]string{filepath.Join(root, "missing"), shared}); err == nil || !strings.Contains(err.Error(), "read repository root") {
 		t.Fatal(err)
 	}
 }

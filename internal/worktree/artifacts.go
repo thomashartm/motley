@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-// CopyArtifacts ports wt's default artifact copy, including cp's native attribute
-// preservation. Env-file search and artifact-directory search are separate passes.
+// CopyArtifacts copies missing environment files and artifact directories in separate
+// passes, preserving file attributes.
 func CopyArtifacts(source, target string, output io.Writer) error {
 	source, err := filepath.EvalSymlinks(source)
 	if err != nil {

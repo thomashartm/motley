@@ -11,14 +11,14 @@ import (
 func TestSpawnRepositoryBranchPrefix(t *testing.T) {
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 140, Height: 40})
 	m.github = nil
-	m.spawn = &spawnForm{repos: []string{"/Users/thomas/projects/aderis/backend"}, query: inputs("")[0]}
+	m.spawn = &spawnForm{repos: []string{"/Users/dev/projects/shared/backend"}, query: inputs("")[0]}
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	m = update(m, spawnSourcesLoaded{sources: []worktree.SourceBranch{{Ref: "refs/heads/develop", Name: "develop"}}})
 	m = update(m, tea.KeyMsg{Type: tea.KeyEnter})
 	if got := m.spawn.fields[3].Value(); got != "feature/backend-" {
 		t.Fatal(got)
 	}
-	m = update(m, key("https://github.com/aderisERP/backend/issues/2991"))
+	m = update(m, key("https://github.com/example-org/backend/issues/2991"))
 	m = update(m, tea.KeyMsg{Type: tea.KeyTab})
 	m = update(m, key("Allow exempt tax code"))
 	if got := m.spawn.fields[3].Value(); got != "feature/backend-2991-allow-exempt-tax-code" {

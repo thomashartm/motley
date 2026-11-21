@@ -26,7 +26,7 @@ Use the member ID printed by `spawn` or listed by `ls`.
 
 The picker groups repositories by entrypoint in config order and shows every
 repository as `name (full path)`. Long paths wrap. If names repeat across roots,
-choose explicitly in the CLI: `--repo ~/projects/aderis/api`. Repeated paths
+choose explicitly in the CLI: `--repo ~/projects/api`. Repeated paths
 to the same physical repository appear only once. All entrypoints must be readable.
 
 The spawn form asks for a **Source branch** after repository selection. The

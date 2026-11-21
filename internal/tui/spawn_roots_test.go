@@ -17,7 +17,7 @@ func TestSpawnPickerUsesAllEntrypoints(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "config"))
-	for _, name := range []string{"motley", "aderis/backend"} {
+	for _, name := range []string{"motley", "shared/backend"} {
 		path := filepath.Join(home, "projects", name)
 		if err := os.MkdirAll(path, 0700); err != nil {
 			t.Fatal(err)
@@ -29,7 +29,7 @@ func TestSpawnPickerUsesAllEntrypoints(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(home, ".motley"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(home, ".motley/config.toml"), []byte("repos_roots = ['~/projects', '~/projects/aderis']\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(home, ".motley/config.toml"), []byte("repos_roots = ['~/projects', '~/projects/shared']\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	first, _ := (Model{}).beginSpawn()
@@ -39,27 +39,27 @@ func TestSpawnPickerUsesAllEntrypoints(t *testing.T) {
 	}
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	msg := cmd().(spawnLoaded)
-	if msg.err != nil || !reflect.DeepEqual(msg.repos, []string{filepath.Join(home, "projects/motley"), filepath.Join(home, "projects/aderis/backend")}) {
+	if msg.err != nil || !reflect.DeepEqual(msg.repos, []string{filepath.Join(home, "projects/motley"), filepath.Join(home, "projects/shared/backend")}) {
 		t.Fatalf("picker repositories: %v (%v)", msg.repos, msg.err)
 	}
 }
 
 func TestRepositoryGroupsPathsAndScrolling(t *testing.T) {
-	repos := []string{"/projects/zeta", "/projects/aderis/api", "/projects/aderis/backend"}
+	repos := []string{"/projects/zeta", "/projects/shared/api", "/projects/shared/backend"}
 	f := &spawnForm{repos: repos, query: inputs("")[0]}
-	want := "/projects\n  > zeta (/projects/zeta)\n\n/projects/aderis\n    api (/projects/aderis/api)\n    backend (/projects/aderis/backend)"
+	want := "/projects\n  > zeta (/projects/zeta)\n\n/projects/shared\n    api (/projects/shared/api)\n    backend (/projects/shared/backend)"
 	if got := strings.Join(f.repositoryView(100, 20), "\n"); got != want {
 		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
 	}
-	f.query.SetValue("aderis")
-	if got := strings.Join(f.repositoryView(100, 20), "\n"); strings.Contains(got, "zeta") || !strings.Contains(got, "api (/projects/aderis/api)") {
+	f.query.SetValue("shared")
+	if got := strings.Join(f.repositoryView(100, 20), "\n"); strings.Contains(got, "zeta") || !strings.Contains(got, "api (/projects/shared/api)") {
 		t.Fatal(got)
 	}
 	f.query.SetValue("")
 	f.choice = 2
 	rows := f.repositoryView(24, 5)
 	view := strings.Join(rows, "\n")
-	if len(rows) > 5 || !strings.Contains(view, "> backend") || !strings.Contains(strings.Join(strings.Fields(view), ""), "(/projects/aderis/backend)") {
+	if len(rows) > 5 || !strings.Contains(view, "> backend") || !strings.Contains(strings.Join(strings.Fields(view), ""), "(/projects/shared/backend)") {
 		t.Fatal(view)
 	}
 	for _, row := range rows {

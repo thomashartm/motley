@@ -5,5 +5,4 @@
 - Only `~/projects/motley` may check out `main`. Linked worktrees must stay on
   feature branches; never switch them to `main` or the repository default branch,
   including after a merge or cleanup.
-- Keep delivery progress and checkpoint notes in `DELIVERY.md`; keep the README
-  focused on installing, using and testing motley.
+- Keep the README focused on installing, using and testing motley.
