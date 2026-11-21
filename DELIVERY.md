@@ -1,5 +1,27 @@
 # Delivery checkpoints
 
+## Global prompt template management — 2026-11-21
+
+On `feature/manage-prompt-templates`, Main actions → Prompt templates can
+create a named multiline prompt, save it across repositories, and delete a
+selected template after confirmation. Cancelling a draft writes no file.
+Invalid drafts stay open for correction, and saving cannot overwrite another
+template. The generic `implement-feature-ticket` blueprint is in
+`examples/blueprints/` and installed in the local global blueprints directory.
+
+The empty-directory test failed before implementation and passed afterward.
+An isolated tmux session exercised multiline creation, save, cancelled deletion
+and confirmed deletion. The installed CLI validated the global template. TUI
+generation passed with blank placeholders and with a supplied URL and extra text.
+
+Installer, uninstaller and OpenCode tests passed. The sole full-suite failure was
+`TestClaudeReportingEndToEnd`, which logged a hook deadline error and passed on
+an isolated rerun. The template packages and real terminal template test also
+passed on the final source. Vet, lint, native build and all four cross-builds passed.
+Aikido scanned all six changed Go files. Five alerts concern the existing editor
+launcher, which passes paths as arguments. Its sixth alert labels the delete
+confirmation text as SQL. That string is rendered only in the terminal.
+
 ## tmux sessions in Ghostty windows — 2026-11-13
 
 Implemented on `feature/tmux-ghostty-window` in

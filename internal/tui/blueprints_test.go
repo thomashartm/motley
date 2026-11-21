@@ -194,18 +194,68 @@ func TestTemplateEditorCommandsAndLiteralFilename(t *testing.T) {
 	}
 }
 
-func TestEmptyGlobalTemplates(t *testing.T) {
+func TestManageGlobalTemplateFromEmptyDirectory(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	m := update(newModel(false, false, "", nil), tea.WindowSizeMsg{Width: 120, Height: 30})
 	next, cmd := m.beginBlueprints()
 	m = update(next.(Model), cmd())
-	if len(m.blueprints.files) != 0 || !strings.Contains(m.View(), "No global templates") {
-		t.Fatal(m.View())
+	if !strings.Contains(m.View(), "Create template") {
+		t.Fatal("empty manager must offer creation")
 	}
 	m = arrow(m, tea.KeyEnter)
+	m = update(m, key("draft"))
 	m = arrow(m, tea.KeyEsc)
-	if m.blueprints != nil {
-		t.Fatal("cannot exit empty manager")
+	files, err := blueprint.GlobalFiles()
+	if err != nil || len(files) != 0 {
+		t.Fatal("cancel wrote a template", files, err)
+	}
+	m = arrow(m, tea.KeyEnter)
+	m = update(m, key("my-ticket"))
+	m = arrow(m, tea.KeyTab)
+	m = update(m, key("Implement {{.Issue.URL}}"))
+	m = arrow(m, tea.KeyEnter)
+	m = update(m, key("Follow AGENTS.md"))
+	finish := func(k tea.KeyType) {
+		t.Helper()
+		next, cmd := m.Update(tea.KeyMsg{Type: k})
+		if cmd == nil {
+			t.Fatal("missing file operation", m.message)
+		}
+		m = update(next.(Model), cmd())
+	}
+	finish(tea.KeyCtrlS)
+	if len(m.blueprints.files) != 1 {
+		t.Fatal("save failed", m.message)
+	}
+	b := m.blueprints.files[0]
+	got, err := b.Render(blueprint.Data{Issue: blueprint.Issue{URL: "issue-url"}})
+	if b.Name != "my-ticket" || err != nil || got != "Implement issue-url\nFollow AGENTS.md" {
+		t.Fatal(b.Name, got, err)
+	}
+	chooseDelete := func() {
+		t.Helper()
+		m = arrow(m, tea.KeyEnter)
+		for _, choice := range m.blueprints.choices() {
+			if choice == "Delete template" {
+				m = arrow(m, tea.KeyEnter)
+				return
+			}
+			m = arrow(m, tea.KeyDown)
+		}
+		t.Fatal("missing delete action")
+	}
+	chooseDelete()
+	m = arrow(m, tea.KeyEnter) // Confirmation defaults to cancel.
+	if _, err := os.Stat(b.Path); err != nil {
+		t.Fatal(err)
+	}
+	m = arrow(m, tea.KeyEsc)
+	chooseDelete()
+	m = arrow(m, tea.KeyDown)
+	finish(tea.KeyEnter)
+	files, err = blueprint.GlobalFiles()
+	if err != nil || len(files) != 0 || len(m.blueprints.files) != 0 || !strings.Contains(m.View(), "Create template") {
+		t.Fatal("delete did not persist", files, err)
 	}
 }
 
