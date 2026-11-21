@@ -65,7 +65,7 @@ func (m Model) actions() []navigationAction {
 	if m.selectedID() == "" {
 		add("Main actions", "Manage crews (m)", "m", "Opens crew management to add, edit, recolour or delete crews and organise their members.", false)
 		add("Main actions", "Spawn agent (s)", "s", "Choose an agent type, then a direct Ghostty tab, a tmux session, or a tmux session attached in Ghostty. Select a repository and source branch, set up a new worktree, and review the prompt before launching. Ghostty requires macOS.", false)
-		add("Main actions", "Prompt templates (f)", "f", "Lists global blueprints. View raw templates, edit them in vi or your default editor, or fill arguments and copy a generated prompt into an external agent. Spawning also offers compatible templates.", false)
+		add("Main actions", "Prompt templates (f)", "f", "Create, edit or delete global prompt templates. Fill their arguments and copy the generated prompt into an external agent. Spawning also offers compatible templates.", false)
 		add("Main actions", "Add existing agent (a)", "a", "Choose Claude or Codex, then select an existing session to add. Import preserves its conversation and files without restarting it.", false)
 		add("Main actions", "Open agent (o)", "o", "Choose a running agent to open. The picker includes all members, even when the main list is filtered.", false)
 		if m.anyOnGitHub() {

@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
@@ -23,11 +25,15 @@ const (
 	blueprintRaw
 	blueprintArguments
 	blueprintPrompt
+	blueprintCreate
+	blueprintDelete
 )
+
+const deleteTemplateAction = 5
 
 type blueprintDialog struct {
 	files          []blueprint.File
-	dir            string
+	name           textinput.Model
 	page           blueprintPage
 	cursor, action int
 	argument       int
@@ -38,21 +44,21 @@ type blueprintDialog struct {
 }
 
 type blueprintsLoaded struct {
-	files []blueprint.File
-	dir   string
-	err   error
+	files              []blueprint.File
+	selectPath, notice string
+	err                error
 }
 
 type blueprintEdited struct{ err error }
 type blueprintCopied struct{ err error }
 
 func loadBlueprints() tea.Msg {
-	dir, err := blueprint.GlobalDir()
-	if err != nil {
-		return blueprintsLoaded{err: err}
-	}
+	return blueprintListResult("", "")
+}
+
+func blueprintListResult(path, notice string) blueprintsLoaded {
 	files, err := blueprint.GlobalFiles()
-	return blueprintsLoaded{files: files, dir: dir, err: err}
+	return blueprintsLoaded{files: files, selectPath: path, notice: notice, err: err}
 }
 
 func (m Model) beginBlueprints() (tea.Model, tea.Cmd) {
@@ -74,10 +80,13 @@ func (m Model) blueprintMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		path := ""
-		if len(d.files) > 0 {
+		if d.cursor < len(d.files) {
 			path = d.files[d.cursor].Path
 		}
-		d.files, d.dir = msg.files, msg.dir
+		if msg.notice != "" {
+			d.page, path, m.message = blueprintList, msg.selectPath, msg.notice
+		}
+		d.files = msg.files
 		d.cursor = max(0, min(d.cursor, len(d.files)-1))
 		for i, file := range d.files {
 			if file.Path == path {
@@ -108,8 +117,11 @@ func (m Model) blueprintMessage(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (d *blueprintDialog) choices() []string {
+	if d.page == blueprintDelete {
+		return []string{"Cancel", "Delete template"}
+	}
 	if d.page == blueprintActions {
-		return []string{"View raw template", "Generate prompt", "Edit in vi", "Edit in default editor", "Reload from disk", "Back to templates"}
+		return []string{"View raw template", "Generate prompt", "Edit in vi", "Edit in default editor", "Reload from disk", "Delete template", "Back to templates"}
 	}
 	labels := make([]string, len(d.files))
 	for i, file := range d.files {
@@ -120,11 +132,11 @@ func (d *blueprintDialog) choices() []string {
 			labels[i] += " · " + file.Description
 		}
 	}
-	return labels
+	return append(labels, "Create template")
 }
 
 func (d *blueprintDialog) selection() int {
-	if d.page == blueprintActions {
+	if d.page != blueprintList {
 		return d.action
 	}
 	return d.cursor
@@ -139,8 +151,10 @@ func (m Model) updateBlueprints(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch d.page {
 			case blueprintList:
 				m.blueprints = nil
-			case blueprintActions:
+			case blueprintActions, blueprintCreate:
 				d.page = blueprintList
+			case blueprintDelete:
+				d.page, d.action = blueprintActions, deleteTemplateAction
 			case blueprintPrompt:
 				d.page = blueprintArguments
 				return m, d.input.Focus()
@@ -151,6 +165,31 @@ func (m Model) updateBlueprints(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		switch d.page {
+		case blueprintCreate:
+			switch k {
+			case "ctrl+s":
+				name, body := strings.TrimSpace(d.name.Value()), d.input.Value()
+				m.busy, m.busyText = true, "Saving template…"
+				return m, func() tea.Msg {
+					path, err := blueprint.CreateGlobal(name, body)
+					if err != nil {
+						return blueprintsLoaded{err: err}
+					}
+					return blueprintListResult(path, "Saved "+name)
+				}
+			case "enter":
+				if !d.name.Focused() {
+					break
+				}
+				fallthrough
+			case "tab", "shift+tab":
+				if d.name.Focused() {
+					d.name.Blur()
+					return m, d.input.Focus()
+				}
+				d.input.Blur()
+				return m, d.name.Focus()
+			}
 		case blueprintArguments:
 			switch k {
 			case "tab", "shift+tab":
@@ -182,14 +221,11 @@ func (m Model) updateBlueprints(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.copyBlueprint()
 			}
 		default:
-			if k == "r" {
+			if k == "r" && d.page != blueprintDelete {
 				m.busy, m.busyText = true, "Reloading templates…"
 				return m, loadBlueprints
 			}
 			choices := d.choices()
-			if len(choices) == 0 {
-				return m, nil
-			}
 			selected := d.selection()
 			switch k {
 			case "up", "k", "shift+tab":
@@ -197,11 +233,6 @@ func (m Model) updateBlueprints(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "down", "j", "tab":
 				selected = min(len(choices)-1, selected+1)
 			case "enter":
-				if d.page == blueprintList {
-					d.page, d.action = blueprintActions, 0
-					m.message = d.files[d.cursor].Path
-					return m, nil
-				}
 				return m.blueprintAction()
 			}
 			if d.page == blueprintList {
@@ -214,6 +245,12 @@ func (m Model) updateBlueprints(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	switch d.page {
+	case blueprintCreate:
+		if d.name.Focused() {
+			d.name, cmd = d.name.Update(msg)
+			return m, cmd
+		}
+		fallthrough
 	case blueprintArguments:
 		d.input, cmd = d.input.Update(msg)
 	case blueprintRaw, blueprintPrompt:
@@ -224,7 +261,36 @@ func (m Model) updateBlueprints(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) blueprintAction() (tea.Model, tea.Cmd) {
 	d := m.blueprints
+	if d.page == blueprintList {
+		if d.cursor < len(d.files) {
+			d.page, d.action = blueprintActions, 0
+			m.message = d.files[d.cursor].Path
+			return m, nil
+		}
+		d.page = blueprintCreate
+		d.name = textinput.New()
+		d.name.Prompt, d.name.Placeholder = "", "template-name"
+		d.input = blueprintInput("Enter prompt text")
+		d.input.CharLimit = 0 // Validate the whole draft on save, including long pastes.
+		m.message = ""
+		m.resizeBlueprints()
+		return m, d.name.Focus()
+	}
 	file := d.files[d.cursor]
+	if d.page == blueprintDelete {
+		if d.action == 0 {
+			d.page, d.action = blueprintActions, deleteTemplateAction
+			return m, nil
+		}
+		m.busy, m.busyText = true, "Deleting template…"
+		return m, func() tea.Msg {
+			// Unlink only files and symlinks, even if a directory now occupies this path.
+			if err := syscall.Unlink(file.Path); err != nil {
+				return blueprintsLoaded{err: fmt.Errorf("delete %s: %w", file.Path, err)}
+			}
+			return blueprintListResult("", "Deleted "+file.Name)
+		}
+	}
 	switch d.action {
 	case 0:
 		d.page = blueprintRaw
@@ -249,7 +315,10 @@ func (m Model) blueprintAction() (tea.Model, tea.Cmd) {
 	case 4:
 		m.busy, m.busyText = true, "Reloading templates…"
 		return m, loadBlueprints
-	case 5:
+	case deleteTemplateAction:
+		d.page, d.action = blueprintDelete, 0
+		m.message = file.Path
+	case 6:
 		d.page = blueprintList
 	}
 	return m, nil
@@ -284,12 +353,17 @@ func (d *blueprintDialog) beginArguments() {
 	d.labels = append(d.labels, "Repo", "Branch", "Base", "Ticket", "Name", "Worktree", "Crew.Title", "Crew.URL", "Crew.Kind", "Issue.Title", "Issue.Body", "Issue.URL")
 	d.values = make([]string, len(d.labels))
 	d.argument, d.page = 0, blueprintArguments
-	d.input = textarea.New()
-	d.input.Prompt = ""
-	d.input.ShowLineNumbers = false
-	d.input.CharLimit = blueprint.MaxPromptBytes
-	d.input.MaxHeight = 0
-	d.input.Placeholder = "Enter value (optional)"
+	d.input = blueprintInput("Enter value (optional)")
+}
+
+func blueprintInput(placeholder string) textarea.Model {
+	input := textarea.New()
+	input.Prompt = ""
+	input.ShowLineNumbers = false
+	input.CharLimit = blueprint.MaxPromptBytes
+	input.MaxHeight = 0
+	input.Placeholder = placeholder
+	return input
 }
 
 func (d *blueprintDialog) render() (string, error) {
@@ -310,6 +384,11 @@ func (m Model) resizeBlueprints() {
 	d := m.blueprints
 	width, height := m.detailWidth(), m.contentHeight()
 	d.preview.Width, d.preview.Height = width, max(1, height-1)
+	if d.page == blueprintCreate {
+		d.name.Width = width
+		d.input.SetWidth(width)
+		d.input.SetHeight(max(1, height-4))
+	}
 	if d.page == blueprintArguments {
 		d.input.SetWidth(width)
 		d.input.SetHeight(max(1, height-2))
@@ -342,10 +421,14 @@ func (m Model) blueprintsView(height int) string {
 	d := m.blueprints
 	width := m.detailWidth()
 	title := "Global prompt templates"
-	if d.page != blueprintList && len(d.files) > 0 {
+	if d.page != blueprintList && d.cursor < len(d.files) {
 		title = d.files[d.cursor].Name
 	}
 	switch d.page {
+	case blueprintCreate:
+		return fit("Create template", width) + "\nName\n" + d.name.View() + "\nPrompt\n" + d.input.View()
+	case blueprintDelete:
+		title = fmt.Sprintf("Delete %s?", clean(filepath.Base(d.files[d.cursor].Path)))
 	case blueprintRaw:
 		return fit("Raw: "+title, width) + "\n" + d.preview.View()
 	case blueprintPrompt:
@@ -355,15 +438,10 @@ func (m Model) blueprintsView(height int) string {
 	}
 	lines := []string{fit(title, width)}
 	choices := d.choices()
-	if len(choices) == 0 {
-		text := "No global templates. Add .md files in " + filepath.Clean(d.dir) + "; r reloads."
-		lines = append(lines, strings.Split(ansi.Wrap(text, width, ""), "\n")...)
-	} else {
-		selected := d.selection()
-		start := max(0, selected-max(1, height-1)+1)
-		for i := start; i < len(choices) && len(lines) < height; i++ {
-			lines = append(lines, fit(control(clean(choices[i]), i == selected), width))
-		}
+	selected := d.selection()
+	start := max(0, selected-max(1, height-1)+1)
+	for i := start; i < len(choices) && len(lines) < height; i++ {
+		lines = append(lines, fit(control(clean(choices[i]), i == selected), width))
 	}
 	return strings.Join(lines[:min(len(lines), height)], "\n")
 }
@@ -376,7 +454,7 @@ func (m Model) blueprintMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	if d.page == blueprintRaw || d.page == blueprintPrompt {
 		return m.updateBlueprints(msg)
 	}
-	if d.page == blueprintArguments {
+	if d.page == blueprintArguments || d.page == blueprintCreate {
 		return m, nil
 	}
 	if msg.Button == tea.MouseButtonWheelDown {

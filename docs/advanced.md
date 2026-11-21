@@ -230,7 +230,15 @@ changing the reusable template. Revive does not replay the initial prompt.
 
 Open **Main actions → Prompt templates (f)**. The browser lists every global
 `.md` template, including templates restricted to particular repositories.
-Select one to:
+Choose **Create template**, enter a name such as `review-ticket`, press **Tab**,
+and type or paste the prompt. **Ctrl-s** saves it globally. **Esc** discards the
+draft. The prompt can use blueprint fields such as `{{.Issue.URL}}`.
+
+The [implement-feature-ticket template](../examples/blueprints/implement-feature-ticket.md)
+uses the issue URL and accepts additional instructions through `additional_items`.
+To add it to another installation, copy the file into the global blueprints directory.
+
+Select a saved template to:
 
 - **View raw template:** read the original Markdown and TOML header; **c** copies it.
 - **Generate prompt:** enter the variables declared in the header's `vars` list,
@@ -243,6 +251,7 @@ Select one to:
   Default editor uses `$VISUAL`, then `$EDITOR`. If neither is set, Motley opens
   the macOS default text editor or Linux's default application for Markdown.
   Commands with arguments work, for example `VISUAL='code --wait'`.
+- **Delete template** removes the selected global file after confirmation.
 - **Reload from disk:** read changes after saving in an editor that opens a separate
   window. Motley also reloads when an editor command returns.
 

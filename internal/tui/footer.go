@@ -102,6 +102,10 @@ func (m Model) footerGroups() (full, compact []string) {
 	// Match the input handlers: the active dialog owns its footer.
 	if m.blueprints != nil {
 		switch m.blueprints.page {
+		case blueprintCreate:
+			return []string{"[Template] tab field · ctrl+s save · esc cancel"}, []string{"tab field · ctrl+s save · esc cancel"}
+		case blueprintDelete:
+			return []string{"[Delete] ↑↓ choose · enter confirm · esc cancel"}, []string{"↑↓ choose · enter confirm · esc cancel"}
 		case blueprintArguments:
 			return []string{"[Arguments] tab next · shift+tab previous · enter newline", "ctrl+s generate · esc back"}, []string{"tab/shift+tab field · ctrl+s generate · esc back"}
 		case blueprintRaw, blueprintPrompt:
